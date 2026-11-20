@@ -65,6 +65,7 @@ import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.presentation.components.subcomps.SineWaveLine
 import com.theveloper.pixelplay.ui.theme.ExpTitleTypography
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -112,7 +113,7 @@ fun BetaInfoBottomSheet(modifier: Modifier = Modifier) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = displayVersion,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         style = ExpTitleTypography.displaySmall,
                         color = MaterialTheme.colorScheme.onSurface
                     )

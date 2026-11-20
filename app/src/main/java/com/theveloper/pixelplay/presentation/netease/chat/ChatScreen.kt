@@ -76,6 +76,7 @@ import com.theveloper.pixelplay.data.netease.chat.ChatMessage
 import com.theveloper.pixelplay.data.netease.chat.ChatResource
 import com.theveloper.pixelplay.presentation.components.SmartImage
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -157,7 +158,7 @@ fun ChatScreen(
                         Spacer(Modifier.width(10.dp))
                         Text(
                             text = peerNickname.ifBlank { viewModel.peerUserId.toString() },
-                            fontFamily = GoogleSansRounded,
+                            fontFamily = LocalAppFontFamily.current,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -182,7 +183,7 @@ fun ChatScreen(
                                 text = stringResource(
                                     if (detail.followed) R.string.chat_followed else R.string.chat_follow
                                 ),
-                                fontFamily = GoogleSansRounded
+                                fontFamily = LocalAppFontFamily.current
                             )
                         }
                     }
@@ -317,7 +318,7 @@ private fun ChatInputBar(
                 placeholder = {
                     Text(
                         text = stringResource(R.string.chat_input_hint),
-                        fontFamily = GoogleSansRounded
+                        fontFamily = LocalAppFontFamily.current
                     )
                 },
                 maxLines = 4,
@@ -395,7 +396,7 @@ private fun MessageBubble(
                         text = message.text,
                         color = contentColor,
                         style = MaterialTheme.typography.bodyMedium,
-                        fontFamily = GoogleSansRounded
+                        fontFamily = LocalAppFontFamily.current
                     )
                 }
             }
@@ -416,7 +417,7 @@ private fun MessageBubble(
                 Button(onClick = { onJoinTogether(invitation.inviterId, invitation.roomId) }) {
                     Text(
                         text = stringResource(R.string.chat_join_together),
-                        fontFamily = GoogleSansRounded
+                        fontFamily = LocalAppFontFamily.current
                     )
                 }
             }
@@ -508,7 +509,7 @@ private fun ResourceCard(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.bodyMedium,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -517,7 +518,7 @@ private fun ResourceCard(
                     Text(
                         text = subtitle,
                         style = MaterialTheme.typography.bodySmall,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis

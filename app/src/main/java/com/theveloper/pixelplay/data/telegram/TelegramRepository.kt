@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -48,6 +49,9 @@ class TelegramRepository @Inject constructor(
 
     val authorizationState: Flow<TdApi.AuthorizationState?> = clientManager.authorizationState
     val authErrors: SharedFlow<TdApi.Error> = clientManager.errors
+
+    /** TDLib 初始化失败原因（native 库加载失败 / Client.create 抛错），成功为 null。 */
+    val initFailure: StateFlow<String?> = clientManager.initFailure
 
     fun clearMemoryCache() {
         resolvedPathCache.clear()

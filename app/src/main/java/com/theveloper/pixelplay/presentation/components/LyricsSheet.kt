@@ -2150,22 +2150,26 @@ fun LyricLineRow(
     val blurModifier: Modifier = if (blurRadius > 0.dp) Modifier.blur(blurRadius) else Modifier
     val animatedModifier = baseModifier.then(transformModifier).then(blurModifier)
 
+    // ⚡ RTL 行（阿拉伯语 / 希伯来语等）：按首强字符启发式检测行方向，
+    //   「左对齐（默认）」设置下自动切换为右对齐；显式 center / right 设置仍尊重用户选择。
+    val lineIsRtl = remember(sanitizedLine) { LyricsRtlDetector.isRtl(sanitizedLine) }
+
     val horizontalAlignment = when (lyricsAlignment) {
         "center" -> Alignment.CenterHorizontally
         "right" -> Alignment.End
-        else -> Alignment.Start
+        else -> if (lineIsRtl) Alignment.End else Alignment.Start
     }
 
     val textAlign = when (lyricsAlignment) {
         "center" -> TextAlign.Center
         "right" -> TextAlign.Right
-        else -> TextAlign.Left
+        else -> if (lineIsRtl) TextAlign.Right else TextAlign.Left
     }
 
     val boxAlignment = when (lyricsAlignment) {
         "center" -> Alignment.TopCenter
         "right" -> Alignment.TopEnd
-        else -> Alignment.TopStart
+        else -> if (lineIsRtl) Alignment.TopEnd else Alignment.TopStart
     }
 
     if (sanitizedWordClusters.isNullOrEmpty()) {
@@ -2279,28 +2283,37 @@ fun LyricLineRow(
                     } else {
                         Modifier.fillMaxWidth()
                     }
+                // ⚡ RTL 行：词按逻辑序放进 FlowRow 会呈「从左到右」的倒序排列。
+                //   这里按首强启发式将词序整体反转 + 靠右对齐，还原视觉阅读方向；
+                //   卡拉OK高亮仍按逻辑词序（时间轴）推进，词与时间的绑定关系不变。
+                val wordSpanItems = remember(sanitizedWordClusters, lineIsRtl) {
+                    buildList {
+                        sanitizedWordClusters?.forEach { cluster ->
+                            cluster.words.forEachIndexed { clusterOffset, word ->
+                                add(cluster.startIndex + clusterOffset to word)
+                            }
+                        }
+                    }.let { if (lineIsRtl) it.asReversed() else it }
+                }
                 FlowRow(
                     modifier = flowRowWidthModifier,
                     horizontalArrangement = when (lyricsAlignment) {
                         "center" -> Arrangement.spacedBy(3.dp, Alignment.CenterHorizontally)
                         "right" -> Arrangement.spacedBy(3.dp, Alignment.End)
-                        else -> Arrangement.spacedBy(3.dp, Alignment.Start)
+                        else -> Arrangement.spacedBy(3.dp, if (lineIsRtl) Alignment.End else Alignment.Start)
                     },
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    sanitizedWordClusters.forEach { cluster ->
-                        cluster.words.forEachIndexed { clusterOffset, word ->
-                            val wordIndex = cluster.startIndex + clusterOffset
-                            key("${line.time}_${word.time}_${word.word}_$wordIndex") {
-                                LyricWordSpan(
-                                    word = word,
-                                    isHighlighted = isCurrentLine && wordIndex == highlightedWordIndex,
-                                    useAnimatedLyrics = useAnimatedLyrics,
-                                    style = style,
-                                    highlightedColor = accentColor,
-                                    unhighlightedColor = unhighlightedColor
-                                )
-                            }
+                    wordSpanItems.forEach { (wordIndex, word) ->
+                        key("${line.time}_${word.time}_${word.word}_$wordIndex") {
+                            LyricWordSpan(
+                                word = word,
+                                isHighlighted = isCurrentLine && wordIndex == highlightedWordIndex,
+                                useAnimatedLyrics = useAnimatedLyrics,
+                                style = style,
+                                highlightedColor = accentColor,
+                                unhighlightedColor = unhighlightedColor
+                            )
                         }
                     }
                 }
@@ -2570,16 +2583,13 @@ fun PlainLyricsLine(
             if (isFirstRomanization) sanitizeLyricLineText(firstExtra) else ""
         } else ""
     }
-    val textAlign = when (lyricsAlignment) {
-        "center" -> TextAlign.Center
-        "right" -> TextAlign.Right
-        else -> TextAlign.Left
-    }
+    // ⚡ RTL 行：按首强字符启发式检测，「左对齐（默认）」设置下自动切换为右对齐
+    val textAlign = lyricLineTextAlign(lyricsAlignment, primaryText)
 
     val horizontalAlignment = when (lyricsAlignment) {
         "center" -> Alignment.CenterHorizontally
         "right" -> Alignment.End
-        else -> Alignment.Start
+        else -> if (LyricsRtlDetector.isRtl(primaryText)) Alignment.End else Alignment.Start
     }
 
     val translationStyle = remember(style) {
@@ -2599,7 +2609,7 @@ fun PlainLyricsLine(
                     text = romanizationText,
                     style = translationStyle,
                     color = translationColor,
-                    textAlign = textAlign,
+                    textAlign = lyricLineTextAlign(lyricsAlignment, romanizationText),
                     modifier = Modifier.padding(top = 4.dp)
                 )
             }
@@ -2609,7 +2619,7 @@ fun PlainLyricsLine(
                     text = translationText,
                     style = translationStyle,
                     color = translationColor,
-                    textAlign = textAlign,
+                    textAlign = lyricLineTextAlign(lyricsAlignment, translationText),
                     modifier = Modifier.padding(top = if (showRomanization && romanizationText.isNotBlank()) 2.dp else 4.dp)
                 )
             }

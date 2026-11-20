@@ -136,6 +136,7 @@ import com.theveloper.pixelplay.presentation.screens.TabAnimation
 import com.theveloper.pixelplay.presentation.viewmodel.BluetoothAudioDeviceState
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 import android.content.pm.PackageManager
 import androidx.compose.animation.animateColorAsState
@@ -714,7 +715,7 @@ private fun CastSheetContent(
                     Spacer(Modifier.width(4.dp))
                     Text(
                         "CONTROLS",
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -740,7 +741,7 @@ private fun CastSheetContent(
                     Spacer(Modifier.width(4.dp))
                     Text(
                         "DEVICES",
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         fontWeight = FontWeight.Bold
                     )
                 }

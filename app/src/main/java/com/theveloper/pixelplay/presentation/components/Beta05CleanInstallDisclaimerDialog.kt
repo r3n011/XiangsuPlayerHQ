@@ -30,6 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -115,7 +116,7 @@ fun Beta05CleanInstallDisclaimerDialog(
                         Text(
                             text = stringResource(R.string.presentation_batch_g_beta05_clean_install_title),
                             style = MaterialTheme.typography.titleLarge,
-                            fontFamily = GoogleSansRounded,
+                            fontFamily = LocalAppFontFamily.current,
                             fontWeight = FontWeight.Bold,
                         )
                         Text(

@@ -72,6 +72,7 @@ import com.theveloper.pixelplay.data.backup.model.BackupSection
 import com.theveloper.pixelplay.data.backup.model.ModuleRestoreDetail
 import com.theveloper.pixelplay.data.backup.model.RestorePlan
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -150,7 +151,7 @@ fun BackupModuleSelectionDialog(
                                             fontSize = 24.sp,
                                             textGeometricTransform = TextGeometricTransform(scaleX = 1.2f),
                                         ),
-                                        fontFamily = GoogleSansRounded,
+                                        fontFamily = LocalAppFontFamily.current,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
@@ -517,7 +518,7 @@ private fun BackupSectionSelectableCardShared(
                     Text(
                         text = section.label,
                         style = MaterialTheme.typography.titleMedium.copy(
-                            fontFamily = GoogleSansRounded
+                            fontFamily = LocalAppFontFamily.current
                         ),
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface

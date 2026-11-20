@@ -90,6 +90,7 @@ import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.presentation.screens.TabAnimation
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import com.theveloper.pixelplay.ui.theme.LocalShowScrollbar
 import com.theveloper.pixelplay.ui.theme.ShapeCache
 import kotlinx.coroutines.flow.map
@@ -155,7 +156,7 @@ fun SongPickerContent(
                 Text(
                     stringResource(R.string.song_picker_title),
                     style = MaterialTheme.typography.displaySmall,
-                    fontFamily = GoogleSansRounded
+                    fontFamily = LocalAppFontFamily.current
                 )
             }
         },
@@ -214,7 +215,7 @@ fun SongPickerContent(
                                     Spacer(Modifier.width(8.dp))
                                     Text(
                                         text = stringResource(labelRes),
-                                        fontFamily = GoogleSansRounded,
+                                        fontFamily = LocalAppFontFamily.current,
                                         fontWeight = FontWeight.Bold,
                                         modifier = Modifier.padding(end = 4.dp)
                                     )
@@ -261,7 +262,7 @@ fun SongPickerContent(
                         Spacer(Modifier.width(10.dp))
                         Text(
                             text = stringResource(R.string.song_picker_action_add),
-                            fontFamily = GoogleSansRounded,
+                            fontFamily = LocalAppFontFamily.current,
                             fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.titleMedium
                         )
@@ -355,7 +356,7 @@ fun SongPickerSelectionPane(
                 label = {
                     Text(
                         text = stringResource(R.string.song_picker_filter_favorites),
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         fontWeight = if (favoritesOnly) FontWeight.Bold else FontWeight.Medium
                     )
                 },
@@ -762,7 +763,7 @@ fun SongPickerEmptyState(
                 Text(
                     text = stringResource(spec.second),
                     style = MaterialTheme.typography.titleLarge,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     fontWeight = FontWeight.SemiBold,
                     textAlign = TextAlign.Center
                 )
@@ -835,7 +836,7 @@ fun SongPickerList(
                         else
                             stringResource(R.string.search_no_results_found),
                         style = MaterialTheme.typography.titleLarge,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         fontWeight = FontWeight.SemiBold,
                         textAlign = TextAlign.Center
                     )

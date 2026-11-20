@@ -109,6 +109,9 @@ class QqMusicRepository @Inject constructor(
     val isLoggedIn: Boolean
         get() = api.hasLogin()
 
+    /** 导出当前登录 Cookie，供「授权电视登录」使用。 */
+    fun getCookieMap(): Map<String, String> = api.getCookieMap()
+
     val userNickname: String?
         get() = prefs.getString("qqmusic_nickname", null)
 

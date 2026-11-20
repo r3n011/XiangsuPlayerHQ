@@ -312,7 +312,10 @@ class AccountsViewModel @Inject constructor(
 
         val disconnectedServices = buildList {
             if (!telegramConnected) add(ExternalServiceAccount.TELEGRAM)
-            if (!gDriveConnected) add(ExternalServiceAccount.GOOGLE_DRIVE)
+            // KI-011：Google Drive 依赖 GDriveConstants 里未配置的 WEB_CLIENT_ID 占位，
+            // OAuth 根本走不通；在真实 Client ID 就位前不在账户页展示入口（Coming soon 虚位）。
+            // gDriveConnected 检查保留：存量已连接的 GDrive 账户仍照常显示与登出。
+            // if (!gDriveConnected) add(ExternalServiceAccount.GOOGLE_DRIVE)
             if (!neteaseConnected) add(ExternalServiceAccount.NETEASE)
             if (!qqConnected) add(ExternalServiceAccount.QQ_MUSIC)
             if (!navidromeConnected) add(ExternalServiceAccount.NAVIDROME)

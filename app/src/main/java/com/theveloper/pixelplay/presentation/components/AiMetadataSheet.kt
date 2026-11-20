@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import com.theveloper.pixelplay.data.ai.SongMetadata
 import com.theveloper.pixelplay.ui.theme.ExpTitleTypography
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 import androidx.compose.ui.res.stringResource
 import com.theveloper.pixelplay.R
@@ -162,7 +163,7 @@ fun AiMetadataSheet(
                             stringResource(R.string.ai_metadata_subtitle_review)
                         },
                         style = MaterialTheme.typography.bodyMedium,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         color = colors.onSurfaceVariant
                     )
                 }

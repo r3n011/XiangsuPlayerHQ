@@ -161,7 +161,8 @@
     <string name="presentation_batch_f_telegram_login_title">Login Telegram</string>
     <string name="presentation_batch_f_telegram_edit_number_chip">Anda sedang mengedit nomor Anda. Mengirim kode lagi akan menggantikan yang sebelumnya.</string>
     <string name="presentation_batch_f_working">Bekerja…</string>
-    <string name="presentation_batch_f_telegram_status_initializing">Menginisialisasi Telegram…</string>
+        <string name="presentation_batch_f_telegram_init_failed">"Gagal menginisialisasi TDLib. Fitur Telegram tidak tersedia."</string>
+<string name="presentation_batch_f_telegram_status_initializing">Menginisialisasi Telegram…</string>
     <string name="presentation_batch_f_telegram_status_logging_out">Keluar…</string>
     <string name="presentation_batch_f_telegram_status_closing">Menutup sesi…</string>
     <string name="presentation_batch_f_telegram_status_closed">Sesi ditutup. Buka kembali login untuk melanjutkan.</string>

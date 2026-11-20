@@ -59,6 +59,7 @@ import com.theveloper.pixelplay.R
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import kotlinx.coroutines.delay
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 
@@ -135,7 +136,7 @@ fun TelegramChannelSearchSheet(
                 Text(
                     text = stringResource(R.string.presentation_batch_f_add_channel_sheet_title),
                     style = MaterialTheme.typography.headlineMedium,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -145,7 +146,7 @@ fun TelegramChannelSearchSheet(
                 Text(
                     text = stringResource(R.string.presentation_batch_f_add_channel_sheet_subtitle),
                     style = MaterialTheme.typography.bodyLarge,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
@@ -163,7 +164,7 @@ fun TelegramChannelSearchSheet(
                         placeholder = {
                             Text(
                                 stringResource(R.string.presentation_batch_f_channel_search_placeholder),
-                                fontFamily = GoogleSansRounded
+                                fontFamily = LocalAppFontFamily.current
                             )
                         },
                         leadingIcon = {
@@ -237,7 +238,7 @@ fun TelegramChannelSearchSheet(
                                 Text(
                                     text = statusMessage ?: stringResource(R.string.presentation_batch_f_searching),
                                     style = MaterialTheme.typography.titleMedium,
-                                    fontFamily = GoogleSansRounded,
+                                    fontFamily = LocalAppFontFamily.current,
                                     color = MaterialTheme.colorScheme.primary
                                 )
                             }
@@ -295,7 +296,7 @@ fun TelegramChannelSearchSheet(
                                 Text(
                                     text = statusMessage!!,
                                     style = MaterialTheme.typography.titleMedium,
-                                    fontFamily = GoogleSansRounded,
+                                    fontFamily = LocalAppFontFamily.current,
                                     fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.onSurface,
                                     textAlign = TextAlign.Center
@@ -312,7 +313,7 @@ fun TelegramChannelSearchSheet(
                                         text = {
                                             Text(
                                                 stringResource(R.string.presentation_batch_f_done),
-                                                fontFamily = GoogleSansRounded,
+                                                fontFamily = LocalAppFontFamily.current,
                                                 fontWeight = FontWeight.SemiBold
                                             )
                                         },
@@ -353,7 +354,7 @@ fun TelegramChannelSearchSheet(
                                 Text(
                                     text = stringResource(R.string.presentation_batch_f_search_channel_title),
                                     style = MaterialTheme.typography.titleMedium,
-                                    fontFamily = GoogleSansRounded,
+                                    fontFamily = LocalAppFontFamily.current,
                                     fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
@@ -363,7 +364,7 @@ fun TelegramChannelSearchSheet(
                                 Text(
                                     text = stringResource(R.string.presentation_batch_f_search_channel_body),
                                     style = MaterialTheme.typography.bodyMedium,
-                                    fontFamily = GoogleSansRounded,
+                                    fontFamily = LocalAppFontFamily.current,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     textAlign = TextAlign.Center
                                 )

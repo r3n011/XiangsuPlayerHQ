@@ -56,6 +56,7 @@ import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.presentation.utils.LocalAppHapticsConfig
 import com.theveloper.pixelplay.presentation.utils.performAppCompatHapticFeedback
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import sh.calvin.reorderable.ReorderableItem
@@ -155,7 +156,7 @@ fun HomeCardOrderSheet(
                         Text(
                             stringResource(R.string.home_card_order_sheet_title),
                             style = MaterialTheme.typography.displaySmall,
-                            fontFamily = GoogleSansRounded
+                            fontFamily = LocalAppFontFamily.current
                         )
                         Text(
                             stringResource(R.string.home_card_order_sheet_visibility_hint),

@@ -165,6 +165,20 @@
     <string
         name="setcat_app_font_desc"
     >Font used across the app UI (does not affect lyrics, which have their own font setting).</string>
+    <string name="setcat_app_font_import">Import custom font</string>
+    <string
+        name="setcat_app_font_import_desc"
+    >Pick a .ttf / .otf file from the device; it is applied immediately after import.</string>
+    <string
+        name="setcat_app_font_import_invalid"
+    >Only .ttf / .otf font files are supported.</string>
+    <string
+        name="setcat_app_font_market_title"
+    >Font market (free &amp; open-source, download on demand)</string>
+    <string name="setcat_app_font_download">Download</string>
+    <string
+        name="setcat_app_font_download_failed"
+    >Download failed, please retry</string>
     <string name="setcat_theme_light">Light Theme</string>
     <string name="setcat_theme_dark">Dark Theme</string>
     <string name="setcat_theme_follow_system">Follow System</string>

@@ -37,6 +37,7 @@ import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.media.CoverArtUpdate
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 import androidx.compose.ui.graphics.ImageBitmap
 import android.net.Uri
@@ -217,7 +218,7 @@ private fun EditMultipleSongsContent(
                     Text(
                         modifier = Modifier.padding(start = 10.dp),
                         text = stringResource(R.string.batch_edit_toolbar_title, songs.size),
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         style = MaterialTheme.typography.displaySmall
                     )
                 }

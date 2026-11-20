@@ -53,6 +53,7 @@ import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
 import com.theveloper.pixelplay.presentation.components.SmartImage
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import dev.chrisbanes.haze.hazeSource
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 
@@ -185,7 +186,7 @@ fun AudiobookAlbumScreen(
                             Spacer(Modifier.width(6.dp))
                             Text(
                                 stringResource(R.string.audiobook_play_all),
-                                fontFamily = GoogleSansRounded,
+                                fontFamily = LocalAppFontFamily.current,
                             )
                         }
                         FilledTonalButton(
@@ -200,7 +201,7 @@ fun AudiobookAlbumScreen(
                             Spacer(Modifier.width(6.dp))
                             Text(
                                 stringResource(R.string.audiobook_shuffle_play),
-                                fontFamily = GoogleSansRounded,
+                                fontFamily = LocalAppFontFamily.current,
                             )
                         }
                     }
@@ -232,7 +233,7 @@ fun AudiobookAlbumScreen(
                             Text(
                                 stringResource(R.string.audiobook_loading_chapters),
                                 style = MaterialTheme.typography.labelMedium,
-                                fontFamily = GoogleSansRounded,
+                                fontFamily = LocalAppFontFamily.current,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
@@ -284,7 +285,7 @@ private fun AlbumHeader(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleLarge,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 2,
@@ -294,7 +295,7 @@ private fun AlbumHeader(
                     Text(
                         text = it,
                         style = MaterialTheme.typography.bodyMedium,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -304,7 +305,7 @@ private fun AlbumHeader(
                     Text(
                         text = stringResource(R.string.audiobook_chapter_count, chapterTotal),
                         style = MaterialTheme.typography.labelMedium,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -324,7 +325,7 @@ private fun AlbumHeader(
                     Text(
                         text = text,
                         style = MaterialTheme.typography.bodySmall,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = if (introExpanded) Int.MAX_VALUE else 3,
                         overflow = TextOverflow.Ellipsis,
@@ -341,7 +342,7 @@ private fun AlbumHeader(
                                     else R.string.audiobook_intro_expand
                                 ),
                                 style = MaterialTheme.typography.labelMedium,
-                                fontFamily = GoogleSansRounded,
+                                fontFamily = LocalAppFontFamily.current,
                             )
                         }
                     }

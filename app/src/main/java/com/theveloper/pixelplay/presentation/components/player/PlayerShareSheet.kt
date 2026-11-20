@@ -29,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 
 /**
  * 分享格式选择（省略号 → 分享）。
@@ -62,7 +63,7 @@ fun PlayerShareSheet(
             Text(
                 text = stringResource(R.string.action_share),
                 style = MaterialTheme.typography.titleMedium,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -132,13 +133,13 @@ private fun ShareOptionRow(
                 Text(
                     text = label,
                     style = MaterialTheme.typography.bodyLarge,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = contentAlpha)
                 )
                 Text(
                     text = desc,
                     style = MaterialTheme.typography.bodySmall,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = contentAlpha)
                 )
             }

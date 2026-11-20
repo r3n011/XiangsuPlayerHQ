@@ -162,7 +162,8 @@
     <string name="presentation_batch_f_telegram_login_title">Login Telegram</string>
     <string name="presentation_batch_f_telegram_edit_number_chip">Stai modificando il tuo numero. L\'invio di un nuovo codice sostituirà quello precedente.</string>
     <string name="presentation_batch_f_working">Elaborazione…</string>
-    <string name="presentation_batch_f_telegram_status_initializing">Inizializzazione Telegram…</string>
+        <string name="presentation_batch_f_telegram_init_failed">"Inizializzazione di TDLib non riuscita. Le funzioni di Telegram non sono disponibili."</string>
+<string name="presentation_batch_f_telegram_status_initializing">Inizializzazione Telegram…</string>
     <string name="presentation_batch_f_telegram_status_logging_out">Disconnessione…</string>
     <string name="presentation_batch_f_telegram_status_closing">Chiusura sessione…</string>
     <string name="presentation_batch_f_telegram_status_closed">Sessione chiusa. Riapri il login per continuare.</string>

@@ -32,6 +32,18 @@ import kotlinx.coroutines.flow.map
 val LocalPixelPlayDarkTheme = staticCompositionLocalOf { false }
 val LocalShowScrollbar = staticCompositionLocalOf { true }
 
+/**
+ * 当前应用字体（设置 → 外观 → 应用字体）。
+ *
+ * 主题 Typography 已在根部统一替换，但大量组件显式写了 `fontFamily = GoogleSansRounded`，
+ * 会盖过 Typography 导致「换字体很多地方不生效」。这些组件一律改为读取本 CompositionLocal，
+ * 由 [PixelPlayTheme] 在根部提供真实当前字体；默认回落主题默认（Google Sans Rounded）。
+ * 歌词文字有独立字体设置（resolveLyricsFontFamily），不走这里。
+ */
+val LocalAppFontFamily = staticCompositionLocalOf<androidx.compose.ui.text.font.FontFamily> {
+    GoogleSansRounded
+}
+
 private tailrec fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this
     is ContextWrapper -> baseContext.findActivity()
@@ -157,7 +169,10 @@ fun PixelPlayTheme(
         navigationColor = finalColorScheme.background
     )
 
-    CompositionLocalProvider(LocalPixelPlayDarkTheme provides darkTheme) {
+    CompositionLocalProvider(
+        LocalPixelPlayDarkTheme provides darkTheme,
+        LocalAppFontFamily provides appFontFamily
+    ) {
         MaterialTheme(
             colorScheme = finalColorScheme,
             typography = appTypography,

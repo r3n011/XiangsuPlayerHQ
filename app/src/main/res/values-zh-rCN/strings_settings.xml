@@ -151,6 +151,20 @@
     <string
         name="setcat_app_font_desc"
     >设置软件界面的全局字体（不影响歌词，歌词有独立的字体设置）。</string>
+    <string name="setcat_app_font_import">导入自定义字体</string>
+    <string
+        name="setcat_app_font_import_desc"
+    >从设备选择 .ttf / .otf 字体文件，导入后立即生效。</string>
+    <string
+        name="setcat_app_font_import_invalid"
+    >仅支持 .ttf / .otf 字体文件。</string>
+    <string
+        name="setcat_app_font_market_title"
+    >字体市场（免费商用 / 开源，按需下载）</string>
+    <string name="setcat_app_font_download">下载</string>
+    <string
+        name="setcat_app_font_download_failed"
+    >下载失败，请重试</string>
     <string name="setcat_theme_light">浅色主题</string>
     <string name="setcat_theme_dark">深色主题</string>
     <string name="setcat_theme_follow_system">跟随系统</string>

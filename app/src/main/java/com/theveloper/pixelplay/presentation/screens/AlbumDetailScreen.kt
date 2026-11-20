@@ -83,6 +83,7 @@ import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import com.theveloper.pixelplay.ui.theme.LocalPixelPlayDarkTheme
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import com.theveloper.pixelplay.ui.theme.PixelPlayStatusBarStyle
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
@@ -507,7 +508,7 @@ fun AlbumDetailScreen(
                             Text(
                                 text = stringResource(R.string.presentation_batch_b_more_options),
                                 style = MaterialTheme.typography.headlineSmall,
-                                fontFamily = GoogleSansRounded,
+                                fontFamily = LocalAppFontFamily.current,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(start = 2.dp, top = 8.dp, bottom = 8.dp)
                             )
@@ -715,7 +716,7 @@ private fun SharedAlbumTopBarProbe(
             expandedTitleEndPadding = 136.dp,
             containerHeightRange = 112.dp to 56.dp,
             titleStyle = MaterialTheme.typography.headlineMedium.copy(
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 fontWeight = FontWeight.SemiBold,
                 textGeometricTransform = TextGeometricTransform(scaleX = 1.08f)
             ),

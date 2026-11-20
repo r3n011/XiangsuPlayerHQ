@@ -25,15 +25,24 @@ class TelegramClientManager @Inject constructor(
         @Volatile
         private var nativeLibraryLoaded: Boolean = false
 
+        /**
+         * TDLib native 库加载失败的原因（成功为 null）。
+         * 登录页据此给出明确错误，不再静默吞掉后永远停在「初始化中」。
+         */
+        @Volatile
+        var nativeLoadError: String? = null
+            private set
+
         init {
             try {
                 System.loadLibrary("tdjni")
                 nativeLibraryLoaded = true
             } catch (e: Throwable) {
                 // 捕获所有可能的异常：UnsatisfiedLinkError, ExceptionInInitializerError, etc.
-                // 记录但不崩溃 - 应用应该能在没有 TDLib 的情况下继续运行
+                // 不崩溃（应用没有 TDLib 也能跑其它功能），但必须记录完整原因并暴露给 UI。
+                nativeLoadError = "${e.javaClass.simpleName}: ${e.message ?: "unknown"}"
                 try {
-                    android.util.Log.e("PixelPlay", "Failed to load TDLib native library: ${e.message}")
+                    android.util.Log.e("PixelPlay", "Failed to load TDLib native library", e)
                 } catch (_: Throwable) {}
                 nativeLibraryLoaded = false
             }
@@ -50,6 +59,13 @@ class TelegramClientManager @Inject constructor(
 
     private val _errors = MutableSharedFlow<TdApi.Error>(extraBufferCapacity = 16)
     val errors = _errors.asSharedFlow()
+
+    /**
+     * TDLib 初始化失败原因（成功为 null）。
+     * 初始值即 companion 的 [nativeLoadError]：native 库加载失败时登录页立刻可见。
+     */
+    private val _initFailure = MutableStateFlow(nativeLoadError)
+    val initFailure = _initFailure.asStateFlow()
 
     private var client: Client? = null
     @Volatile
@@ -77,36 +93,29 @@ class TelegramClientManager @Inject constructor(
     }
 
     init {
-        try {
-            if (isNativeLibraryAvailable()) {
-                initializeClient()
-            }
-        } catch (e: Throwable) {
-            // 捕获所有异常，防止初始化失败时不崩溃应用
-            try {
-                android.util.Log.e("PixelPlay", "TelegramClientManager init failed: ${e.message}")
-            } catch (_: Throwable) {}
-        }
+        // 确定性初始化：native 库加载成功时必须创建客户端（与原版行为一致）；
+        // 创建失败记录完整堆栈并暴露到 [initFailure]，登录页可见，不再静默失能。
+        initializeClient()
     }
 
     @Synchronized
     private fun initializeClient() {
         if (client != null) return
-        if (!isNativeLibraryAvailable()) return
+        if (!isNativeLibraryAvailable()) {
+            // native 库没加载成功：原因已记录在 nativeLoadError 并已进入 initFailure 初始值
+            return
+        }
         try {
             Client.execute(TdApi.SetLogVerbosityLevel(1))
         } catch (e: Throwable) {
-            try {
-                android.util.Log.e("PixelPlay", "Failed to set TDLib log verbosity: ${e.message}")
-            } catch (_: Throwable) {}
+            Timber.w(e, "Failed to set TDLib log verbosity")
         }
 
         try {
             client = Client.create(updateHandler, null, null)
         } catch (e: Throwable) {
-            try {
-                android.util.Log.e("PixelPlay", "Failed to create TDLib client: ${e.message}")
-            } catch (_: Throwable) {}
+            Timber.e(e, "Failed to create TDLib client")
+            _initFailure.value = "${e.javaClass.simpleName}: ${e.message ?: "unknown"}"
         }
     }
 

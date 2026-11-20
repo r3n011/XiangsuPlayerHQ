@@ -93,6 +93,7 @@ import com.theveloper.pixelplay.data.lx.LxScriptInfo
 import com.theveloper.pixelplay.data.lx.LxSourceInfo
 import com.theveloper.pixelplay.data.lx.LxSourceTester
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import com.theveloper.pixelplay.presentation.components.CollapsibleCommonTopBar
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
 import com.theveloper.pixelplay.presentation.viewmodel.LxMusicViewModel
@@ -413,14 +414,14 @@ private fun SourceConnectivityCard(
                     Text(
                         text = localizedStringResource(R.string.ui_residue_market_source_test_title),
                         style = MaterialTheme.typography.titleMedium,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         fontWeight = FontWeight.SemiBold
                     )
                     Spacer(Modifier.height(2.dp))
                     Text(
                         text = localizedStringResource(R.string.ui_search_each_installed_source_and_try_to_get_a_playback),
                         style = MaterialTheme.typography.bodySmall,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -438,7 +439,7 @@ private fun SourceConnectivityCard(
                     }
                     Text(
                         text = if (testingAll) localizedStringResource(R.string.ui_residue_market_testing) else localizedStringResource(R.string.ui_residue_market_test_all),
-                        fontFamily = GoogleSansRounded
+                        fontFamily = LocalAppFontFamily.current
                     )
                 }
             }
@@ -447,7 +448,7 @@ private fun SourceConnectivityCard(
                 Text(
                     text = localizedStringResource(R.string.ui_no_source_scripts_installed_install_one_from_the_source_market),
                     style = MaterialTheme.typography.bodySmall,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             } else {
@@ -486,7 +487,7 @@ private fun SourceTestRow(
                 Text(
                     text = row.displayName,
                     style = MaterialTheme.typography.bodyMedium,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -495,7 +496,7 @@ private fun SourceTestRow(
                 Text(
                     text = statusText,
                     style = MaterialTheme.typography.labelSmall,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     color = statusColor,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -504,7 +505,7 @@ private fun SourceTestRow(
                     Text(
                         text = "${result.latencyMs}ms",
                         style = MaterialTheme.typography.labelSmall,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -517,7 +518,7 @@ private fun SourceTestRow(
                         if (result.sample.isNotBlank()) append(AppLocaleManager.getString(R.string.ui_example, (result.sample).toString()))
                     },
                     style = MaterialTheme.typography.bodySmall,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
@@ -528,7 +529,7 @@ private fun SourceTestRow(
         TextButton(onClick = onTest, enabled = !row.testing) {
             Text(
                 text = localizedStringResource(R.string.ui_residue_market_test),
-                fontFamily = GoogleSansRounded
+                fontFamily = LocalAppFontFamily.current
             )
         }
     }

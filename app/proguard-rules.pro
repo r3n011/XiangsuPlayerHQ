@@ -138,13 +138,6 @@
 -keep class net.sourceforge.pinyin4j.** { *; }
 -dontwarn net.sourceforge.pinyin4j.**
 
-# 友盟移动统计 U-App（官方要求的混淆配置，避免 SDK 内部反射类被裁剪导致统计失效/崩溃）
--keep class com.umeng.** { *; }
--keep class org.repackage.** { *; }
--keep class com.uyumao.** { *; }
--keepclassmembers class * {
-    public <init> (org.json.JSONObject);
-}
 -keepclassmembers enum * {
     public static **[] values();
     public static ** valueOf(java.lang.String);

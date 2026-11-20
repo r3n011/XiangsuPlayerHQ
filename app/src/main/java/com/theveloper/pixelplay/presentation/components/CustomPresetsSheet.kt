@@ -39,6 +39,7 @@ import androidx.compose.ui.res.stringResource
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.equalizer.EqualizerPreset
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,7 +67,7 @@ fun CustomPresetsSheet(
             Text(
                 text = stringResource(R.string.presentation_batch_g_presets_saved_title),
                 style = MaterialTheme.typography.titleLarge,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
             )
@@ -141,7 +142,7 @@ private fun CustomPresetItem(
                     text = preset.displayName.firstOrNull()?.toString()?.uppercase() ?: "C",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSecondaryContainer,
-                    fontFamily = GoogleSansRounded
+                    fontFamily = LocalAppFontFamily.current
                 )
             }
             Spacer(modifier = Modifier.width(16.dp))
@@ -149,7 +150,7 @@ private fun CustomPresetItem(
                 Text(
                     text = preset.displayName,
                     style = MaterialTheme.typography.bodyLarge,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     fontWeight = FontWeight.Medium
                 )
             }

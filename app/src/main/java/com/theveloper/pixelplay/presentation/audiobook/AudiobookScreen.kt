@@ -54,6 +54,7 @@ import com.theveloper.pixelplay.data.kugou.KugouAudiobookAlbum
 import com.theveloper.pixelplay.presentation.components.CollapsibleCommonTopBar
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import dev.chrisbanes.haze.hazeSource
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 
@@ -232,13 +233,13 @@ private fun FreeLibraryEntryCard(onClick: () -> Unit) {
                 Text(
                     text = stringResource(R.string.audiobook_free_library),
                     style = MaterialTheme.typography.titleSmall,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
                     text = stringResource(R.string.audiobook_free_library_desc),
                     style = MaterialTheme.typography.labelSmall,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,

@@ -100,6 +100,7 @@ import com.theveloper.pixelplay.data.bilibili.BilibiliCaptchaChallenge
 import com.theveloper.pixelplay.data.bilibili.BilibiliRepository
 import com.theveloper.pixelplay.data.bilibili.BilibiliSearchApi
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
@@ -368,7 +369,7 @@ fun BilibiliLoginSheet(
                 title = {
                     Text(
                         text = localizedStringResource(R.string.ui_connect_to_bilibili),
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         style = MaterialTheme.typography.titleMedium
                     )
                 },
@@ -468,7 +469,7 @@ fun BilibiliLoginSheet(
             ) {
                 Text(
                     text = if (authMode == BilibiliAuthMode.Phone) localizedStringResource(R.string.ui_sign_in_with_qr_code) else localizedStringResource(R.string.ui_sign_in_with_phone_number),
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     fontWeight = FontWeight.Medium
                 )
             }
@@ -500,7 +501,7 @@ private fun BilibiliBrandingHeader() {
         Text(
             text = localizedStringResource(R.string.ui_connect_to_bilibili),
             style = MaterialTheme.typography.headlineSmall,
-            fontFamily = GoogleSansRounded,
+            fontFamily = LocalAppFontFamily.current,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
         )
@@ -508,7 +509,7 @@ private fun BilibiliBrandingHeader() {
         Text(
             text = localizedStringResource(R.string.ui_sign_in_to_post_comments_reply_like_report_and_sync),
             style = MaterialTheme.typography.bodyMedium,
-            fontFamily = GoogleSansRounded,
+            fontFamily = LocalAppFontFamily.current,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
@@ -566,7 +567,7 @@ private fun BilibiliLoadingCard(message: String) {
             Text(
                 text = message.ifBlank { AppLocaleManager.getString(R.string.ui_residue_qq_login_loading) },
                 style = MaterialTheme.typography.bodyMedium,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 color = MaterialTheme.colorScheme.onSurface
             )
             Spacer(modifier = Modifier.height(10.dp))
@@ -597,7 +598,7 @@ private fun BilibiliInlineErrorCard(
                 text = message,
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.bodyMedium,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 color = MaterialTheme.colorScheme.onErrorContainer
             )
             FilledIconButton(
@@ -647,7 +648,7 @@ private fun BilibiliAuthStepHeader(
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleLarge,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -657,7 +658,7 @@ private fun BilibiliAuthStepHeader(
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodyMedium,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Start
             )
@@ -688,7 +689,7 @@ private fun BilibiliExpressiveButton(
         text = {
             Text(
                 text = if (loading) localizedStringResource(R.string.ui_residue_qq_login_loading) else text,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 fontWeight = FontWeight.SemiBold
             )
         },
@@ -776,7 +777,7 @@ private fun BilibiliPhoneNumberField(
                 Text(
                     text = "+",
                     style = MaterialTheme.typography.bodyLarge,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -794,7 +795,7 @@ private fun BilibiliPhoneNumberField(
                         .focusRequester(codeFocusRequester)
                         .onFocusChanged { codeFieldFocused = it.isFocused },
                     textStyle = MaterialTheme.typography.bodyLarge.copy(
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface
                     ),
@@ -810,7 +811,7 @@ private fun BilibiliPhoneNumberField(
                                 Text(
                                     text = "86",
                                     style = MaterialTheme.typography.bodyLarge.copy(
-                                        fontFamily = GoogleSansRounded,
+                                        fontFamily = LocalAppFontFamily.current,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
                                     )
                                 )
@@ -842,7 +843,7 @@ private fun BilibiliPhoneNumberField(
                         .focusRequester(numFocusRequester)
                         .onFocusChanged { numFieldFocused = it.isFocused },
                     textStyle = MaterialTheme.typography.bodyLarge.copy(
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         color = MaterialTheme.colorScheme.onSurface,
                         letterSpacing = 1.sp
                     ),
@@ -860,7 +861,7 @@ private fun BilibiliPhoneNumberField(
                                 Text(
                                     text = localizedStringResource(R.string.ui_residue_auth_phone_number_label),
                                     style = MaterialTheme.typography.bodyLarge.copy(
-                                        fontFamily = GoogleSansRounded,
+                                        fontFamily = LocalAppFontFamily.current,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
                                         letterSpacing = 1.sp
                                     )
@@ -913,7 +914,7 @@ private fun BilibiliSmsCodeField(
         OutlinedTextField(
             value = code,
             onValueChange = { onCodeChanged(it.filter(Char::isDigit).take(8)) },
-            label = { Text(localizedStringResource(R.string.ui_residue_kugou_login_code_label), fontFamily = GoogleSansRounded) },
+            label = { Text(localizedStringResource(R.string.ui_residue_kugou_login_code_label), fontFamily = LocalAppFontFamily.current) },
             leadingIcon = {
                 Icon(
                     imageVector = Icons.Rounded.Sms,
@@ -949,7 +950,7 @@ private fun BilibiliSmsCodeField(
             TextButton(onClick = onEditPhone, enabled = !isLoading) {
                 Text(
                     text = localizedStringResource(R.string.ui_residue_kugou_login_edit_phone),
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -957,7 +958,7 @@ private fun BilibiliSmsCodeField(
             TextButton(onClick = onResend, enabled = resendCountdown <= 0 && !isLoading) {
                 Text(
                     text = if (resendCountdown > 0) localizedStringResource(R.string.ui_resend_in_s, (resendCountdown).toString()) else localizedStringResource(R.string.ui_resend),
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )

@@ -49,6 +49,7 @@ import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.github.ApkDownloadInstaller
 import com.theveloper.pixelplay.data.github.UpdateChecker
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -175,7 +176,7 @@ fun UpdateAvailableDialog(
                         Text(
                             text = stringResource(R.string.update_available_title),
                             style = MaterialTheme.typography.titleLarge,
-                            fontFamily = GoogleSansRounded,
+                            fontFamily = LocalAppFontFamily.current,
                             fontWeight = FontWeight.Bold,
                         )
                         Text(

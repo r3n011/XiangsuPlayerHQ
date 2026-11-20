@@ -70,6 +70,7 @@ import androidx.compose.ui.zIndex
 import coil.size.Size
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 
 /**
@@ -200,7 +201,7 @@ fun MultiSelectionBottomSheet(
                             text = stringResource(R.string.multi_selection_songs_count_upper, selectedSongs.size),
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
-                            fontFamily = GoogleSansRounded,
+                            fontFamily = LocalAppFontFamily.current,
                             modifier = Modifier.padding(end = 4.dp),
                             minFontSize = 16.sp,
                             maxFontSizeLimit = 24.sp,
@@ -210,7 +211,7 @@ fun MultiSelectionBottomSheet(
                         Text(
                             text = stringResource(R.string.multi_selection_selected),
                             style = MaterialTheme.typography.bodyLarge,
-                            fontFamily = GoogleSansRounded,
+                            fontFamily = LocalAppFontFamily.current,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             overflow = TextOverflow.Ellipsis,
                             maxLines = 1,

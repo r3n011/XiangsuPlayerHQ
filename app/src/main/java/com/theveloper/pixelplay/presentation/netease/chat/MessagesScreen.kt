@@ -101,6 +101,7 @@ import com.theveloper.pixelplay.data.netease.chat.ChatContact
 import com.theveloper.pixelplay.data.netease.chat.ChatUserSummary
 import com.theveloper.pixelplay.presentation.components.SmartImage
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -394,7 +395,7 @@ private fun ConversationRow(contact: ChatContact, onClick: () -> Unit) {
             Text(
                 text = contact.nickname,
                 style = MaterialTheme.typography.bodyLarge,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -403,7 +404,7 @@ private fun ConversationRow(contact: ChatContact, onClick: () -> Unit) {
             Text(
                 text = contact.lastMessagePreview,
                 style = MaterialTheme.typography.bodySmall,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -467,7 +468,7 @@ private fun ContactsTab(
                 placeholder = {
                     Text(
                         text = stringResource(R.string.chat_contacts_search),
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
@@ -544,7 +545,7 @@ private fun ContactRow(contact: ChatContact, onClick: () -> Unit) {
                 Text(
                     text = contact.nickname,
                     style = MaterialTheme.typography.bodyLarge,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -554,7 +555,7 @@ private fun ContactRow(contact: ChatContact, onClick: () -> Unit) {
                     text = contact.lastMessagePreview.takeIf { it.isNotBlank() }
                         ?: stringResource(R.string.chat_contacts_start_hint),
                     style = MaterialTheme.typography.bodySmall,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -596,7 +597,7 @@ private fun SearchUsersTab(
             placeholder = {
                 Text(
                     text = stringResource(R.string.chat_search_hint),
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
@@ -660,7 +661,7 @@ private fun UserRow(
             Text(
                 text = user.nickname,
                 style = MaterialTheme.typography.bodyLarge,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -670,7 +671,7 @@ private fun UserRow(
                 Text(
                     text = signature,
                     style = MaterialTheme.typography.bodySmall,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -684,11 +685,11 @@ private fun UserRow(
         ) {
             if (followed) {
                 OutlinedButton(onClick = { onToggleFollow(false) }, enabled = !toggling) {
-                    Text(stringResource(R.string.chat_unfollow), fontFamily = GoogleSansRounded)
+                    Text(stringResource(R.string.chat_unfollow), fontFamily = LocalAppFontFamily.current)
                 }
             } else {
                 FilledTonalButton(onClick = { onToggleFollow(true) }, enabled = !toggling) {
-                    Text(stringResource(R.string.chat_follow), fontFamily = GoogleSansRounded)
+                    Text(stringResource(R.string.chat_follow), fontFamily = LocalAppFontFamily.current)
                 }
             }
             IconButton(onClick = onSendMessage) {
@@ -715,12 +716,12 @@ private fun LoginRequiredContent(onGoLogin: () -> Unit, topPadding: Dp = 0.dp) {
         Text(
             text = stringResource(R.string.chat_need_login),
             style = MaterialTheme.typography.bodyLarge,
-            fontFamily = GoogleSansRounded,
+            fontFamily = LocalAppFontFamily.current,
             textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(16.dp))
         Button(onClick = onGoLogin) {
-            Text(stringResource(R.string.chat_go_login), fontFamily = GoogleSansRounded)
+            Text(stringResource(R.string.chat_go_login), fontFamily = LocalAppFontFamily.current)
         }
     }
 }
@@ -731,7 +732,7 @@ private fun EmptyHint(text: String) {
         Text(
             text = text,
             style = MaterialTheme.typography.bodyMedium,
-            fontFamily = GoogleSansRounded,
+            fontFamily = LocalAppFontFamily.current,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )

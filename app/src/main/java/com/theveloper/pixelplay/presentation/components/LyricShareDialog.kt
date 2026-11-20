@@ -74,6 +74,7 @@ import com.theveloper.pixelplay.presentation.components.isolation.IsolationBackg
 import com.theveloper.pixelplay.presentation.components.isolation.IsolationCpuRenderer
 import com.theveloper.pixelplay.presentation.components.isolation.extractIsolationPalette
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import java.io.File
 import java.io.FileOutputStream
 import kotlinx.coroutines.Dispatchers
@@ -150,7 +151,7 @@ internal fun LyricShareDialog(
                 Text(
                     text = stringResource(R.string.common_cancel),
                     color = MaterialTheme.colorScheme.primary,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     modifier = Modifier
                         .clickable(onClick = dismissAnimated)
                         .padding(8.dp)
@@ -166,7 +167,7 @@ internal fun LyricShareDialog(
                 Text(
                     text = stringResource(R.string.lyric_share_select_all),
                     color = MaterialTheme.colorScheme.primary,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     modifier = Modifier
                         .clickable { selected = lines.indices.toSet() }
                         .padding(8.dp)
@@ -195,7 +196,7 @@ internal fun LyricShareDialog(
                     Text(
                         text = title,
                         color = MaterialTheme.colorScheme.onBackground,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -203,7 +204,7 @@ internal fun LyricShareDialog(
                     Text(
                         text = artist,
                         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.58f),
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -216,7 +217,7 @@ internal fun LyricShareDialog(
                             text = stringResource(R.string.lyric_share_selected_count, count),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
-                            fontFamily = GoogleSansRounded,
+                            fontFamily = LocalAppFontFamily.current,
                             fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.padding(top = 4.dp)
                         )
@@ -256,7 +257,7 @@ internal fun LyricShareDialog(
                         Text(
                             text = line,
                             color = MaterialTheme.colorScheme.onSurface,
-                            fontFamily = GoogleSansRounded,
+                            fontFamily = LocalAppFontFamily.current,
                             fontWeight = if (chosen) FontWeight.SemiBold else FontWeight.Normal
                         )
                     }
@@ -268,7 +269,7 @@ internal fun LyricShareDialog(
                     text = it,
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.labelSmall,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
                 )
             }
@@ -293,7 +294,7 @@ internal fun LyricShareDialog(
                 ) {
                     Text(
                         text = stringResource(R.string.lyric_share_text),
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -332,7 +333,7 @@ internal fun LyricShareDialog(
                             text = stringResource(
                                 if (gen) R.string.lyric_share_generating else R.string.lyric_share_image
                             ),
-                            fontFamily = GoogleSansRounded,
+                            fontFamily = LocalAppFontFamily.current,
                             fontWeight = FontWeight.SemiBold
                         )
                     }
@@ -476,19 +477,21 @@ internal suspend fun shareLyricImage(
         }
 
         // 歌名 / 歌手
+        // ⚡ RTL 行（阿语/希语等）：按首强启发式切换为右对齐绘制（从右缘起笔），
+        //   与主歌词界面的方向行为保持一致；其它行仍走原左对齐路径。
         val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.WHITE
             textSize = 58f
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         }
-        canvas.drawText(title, margin, textTop, titlePaint)
+        drawShareLine(canvas, width.toFloat(), margin, textTop, title, titlePaint)
         textTop += 62f
         if (artist.isNotBlank()) {
             val artistPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = Color.parseColor("#B0FFFFFF")
                 textSize = 38f
             }
-            canvas.drawText(artist, margin, textTop, artistPaint)
+            drawShareLine(canvas, width.toFloat(), margin, textTop, artist, artistPaint)
             textTop += 56f
         }
 
@@ -496,7 +499,7 @@ internal suspend fun shareLyricImage(
         textTop += 40f
         wrapped.forEach { line ->
             textTop += bodyTextSize
-            canvas.drawText(line, margin, textTop, bodyPaint)
+            drawShareLine(canvas, width.toFloat(), margin, textTop, line, bodyPaint)
             textTop += lineSpacing
         }
 
@@ -525,6 +528,27 @@ private const val SHARE_BACKGROUND_TIME_SEC = 12f
 /** 歌词行的内边距（「英雄元素」的终点要对齐到行的**文字框**，必须与这里一致）。 */
 private val SHARE_ROW_H_PADDING = 16.dp
 private val SHARE_ROW_V_PADDING = 14.dp
+
+/**
+ * 分享卡片单行绘制（RTL 感知）：RTL 行用 [Paint.Align.RIGHT] 从右缘起笔，
+ * 其余行保持左缘起笔。方向判定复用主歌词界面的 [LyricsRtlDetector]。
+ */
+private fun drawShareLine(
+    canvas: android.graphics.Canvas,
+    bitmapWidth: Float,
+    margin: Float,
+    textTop: Float,
+    text: String,
+    paint: Paint
+) {
+    if (LyricsRtlDetector.isRtl(text)) {
+        paint.textAlign = Paint.Align.RIGHT
+        canvas.drawText(text, bitmapWidth - margin, textTop, paint)
+        paint.textAlign = Paint.Align.LEFT
+    } else {
+        canvas.drawText(text, margin, textTop, paint)
+    }
+}
 
 /** 按像素宽度折行（中英文都按字符宽度累计，够用且不依赖排版引擎） */
 private fun wrapText(text: String, paint: Paint, maxWidth: Float): List<String> {    if (text.isBlank()) return listOf("")

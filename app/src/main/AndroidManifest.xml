@@ -7,10 +7,15 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- 听歌识曲：录制一段外放声音生成音频指纹 -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- 扫码授权电视登录（CameraX 预览 + ZXing 解码） -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Android 新版本的本地网络访问权限（旧系统忽略） -->
+    <uses-permission
+        android:name="android.permission.ACCESS_LOCAL_NETWORK"
+        tools:ignore="ProtectedPermissions" />
+    <uses-feature android:name="android.hardware.camera.any" android:required="false" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-    <!-- 友盟移动统计 U-App：用于采集设备标识与网络状态 -->
-    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission
@@ -149,6 +154,14 @@
                 android:name="android.app.shortcuts"
                 android:resource="@xml/shortcuts" />
         </activity>
+
+        <activity
+            android:name=".presentation.tvauth.TvAuthorizeActivity"
+            android:exported="false"
+            android:label="授权电视登录"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.PixelPlay.Login"
+            android:windowSoftInputMode="adjustResize" />
 
         <activity
             android:name=".presentation.plugin.XsPluginWebActivity"

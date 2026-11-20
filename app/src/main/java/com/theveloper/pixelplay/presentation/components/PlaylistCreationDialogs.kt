@@ -96,6 +96,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import android.content.res.Resources
 import kotlin.math.max
 import kotlin.math.min
@@ -153,7 +154,7 @@ fun PlaylistCreationTypeDialog(
                         text = stringResource(R.string.presentation_batch_e_create_playlist_title),
                         color = MaterialTheme.colorScheme.primary,
                         style = MaterialTheme.typography.headlineSmall.copy(
-                            fontFamily = GoogleSansRounded,
+                            fontFamily = LocalAppFontFamily.current,
                             fontWeight = FontWeight.Bold
                         )
                     )
@@ -422,7 +423,7 @@ private fun CreateAiPlaylistContent(
                     Text(
                         text = stringResource(R.string.presentation_batch_e_ai_playlist_lab_title),
                         style = MaterialTheme.typography.titleLarge.copy(
-                            fontFamily = GoogleSansRounded,
+                            fontFamily = LocalAppFontFamily.current,
                             fontWeight = FontWeight.ExtraBold,
                             fontSize = 28.sp
                         )

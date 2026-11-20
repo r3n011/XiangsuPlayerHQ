@@ -58,6 +58,7 @@ import com.theveloper.pixelplay.data.model.toLibraryTabIdOrNull
 import com.theveloper.pixelplay.presentation.utils.LocalAppHapticsConfig
 import com.theveloper.pixelplay.presentation.utils.performAppCompatHapticFeedback
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
@@ -148,7 +149,7 @@ fun ReorderTabsSheet(
                     Text(
                         stringResource(R.string.reorder_tabs_sheet_title),
                         style = MaterialTheme.typography.displaySmall,
-                        fontFamily = GoogleSansRounded
+                        fontFamily = LocalAppFontFamily.current
                     )
                 }
             },

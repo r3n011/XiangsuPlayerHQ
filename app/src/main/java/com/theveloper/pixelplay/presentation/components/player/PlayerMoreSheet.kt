@@ -51,6 +51,7 @@ import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.presentation.components.SmartImage
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 
 /**
  * 播放器右下角「省略号」打开的歌曲操作菜单（对齐 Rhythm 的更多操作入口）。
@@ -143,7 +144,7 @@ fun PlayerMoreSheet(
                     Text(
                         text = song.title,
                         style = MaterialTheme.typography.titleMedium,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         fontWeight = FontWeight.Bold,
                         color = scheme.onSurface,
                         maxLines = 1,
@@ -152,7 +153,7 @@ fun PlayerMoreSheet(
                     Text(
                         text = song.displayArtist,
                         style = MaterialTheme.typography.bodySmall,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         color = scheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -276,7 +277,7 @@ private fun MoreActionRow(
         Text(
             text = label,
             style = MaterialTheme.typography.titleMedium,
-            fontFamily = GoogleSansRounded,
+            fontFamily = LocalAppFontFamily.current,
             color = MaterialTheme.colorScheme.onSurface
         )
     }

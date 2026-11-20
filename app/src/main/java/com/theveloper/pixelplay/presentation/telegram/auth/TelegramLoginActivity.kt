@@ -107,6 +107,7 @@ import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.presentation.telegram.channel.TelegramChannelSearchSheet
 import com.theveloper.pixelplay.presentation.telegram.dashboard.TelegramDashboardScreen
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import com.theveloper.pixelplay.ui.theme.PixelPlayTheme
 import dagger.hilt.android.AndroidEntryPoint
 import org.drinkless.tdlib.TdApi
@@ -145,6 +146,7 @@ fun TelegramLoginScreen(
     onFinish: () -> Unit
 ) {
     val authState by viewModel.authorizationState.collectAsStateWithLifecycle(initialValue = null)
+    val initFailure by viewModel.initFailure.collectAsStateWithLifecycle(initialValue = null)
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var showSearchSheet by remember { mutableStateOf(false) }
 
@@ -206,7 +208,7 @@ fun TelegramLoginScreen(
                 title = {
                     Text(
                         text = stringResource(R.string.presentation_batch_f_telegram_login_title),
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         style = MaterialTheme.typography.titleMedium
                     )
                 },
@@ -266,7 +268,7 @@ fun TelegramLoginScreen(
                     label = {
                         Text(
                             text = stringResource(R.string.presentation_batch_f_telegram_edit_number_chip),
-                            fontFamily = GoogleSansRounded
+                            fontFamily = LocalAppFontFamily.current
                         )
                     },
                     colors = AssistChipDefaults.assistChipColors(
@@ -288,7 +290,7 @@ fun TelegramLoginScreen(
                         Text(
                             text = uiState.loadingMessage.ifBlank { defaultWorkingMessage },
                             style = MaterialTheme.typography.bodyMedium,
-                            fontFamily = GoogleSansRounded,
+                            fontFamily = LocalAppFontFamily.current,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Spacer(modifier = Modifier.height(10.dp))
@@ -346,7 +348,7 @@ fun TelegramLoginScreen(
                     }
 
                     TelegramVisualStep.Status -> {
-                        StatusMessage(message = authStateStatusMessage(authState))
+                        StatusMessage(message = authStateStatusMessage(authState, initFailure))
                     }
                 }
             }
@@ -369,8 +371,16 @@ private fun resolveTelegramVisualStep(
 }
 
 @Composable
-private fun authStateStatusMessage(state: TdApi.AuthorizationState?): String =
-    stringResource(
+private fun authStateStatusMessage(
+    state: TdApi.AuthorizationState?,
+    initFailure: String?
+): String {
+    // TDLib 初始化失败（native 库加载失败 / Client.create 抛错）：直接展示真实原因，
+    // 不再无限停留在「初始化中」。
+    if (initFailure != null && state == null) {
+        return stringResource(R.string.presentation_batch_f_telegram_init_failed) + "\n" + initFailure
+    }
+    return stringResource(
         when (state) {
             null -> R.string.presentation_batch_f_telegram_status_initializing
             is TdApi.AuthorizationStateLoggingOut -> R.string.presentation_batch_f_telegram_status_logging_out
@@ -380,6 +390,7 @@ private fun authStateStatusMessage(state: TdApi.AuthorizationState?): String =
             else -> R.string.presentation_batch_f_telegram_status_waiting
         }
     )
+}
 
 @Composable
 private fun TelegramBrandingHeader() {
@@ -404,7 +415,7 @@ private fun TelegramBrandingHeader() {
         Text(
             text = stringResource(R.string.presentation_batch_f_connect_telegram),
             style = MaterialTheme.typography.headlineSmall,
-            fontFamily = GoogleSansRounded,
+            fontFamily = LocalAppFontFamily.current,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
         )
@@ -414,7 +425,7 @@ private fun TelegramBrandingHeader() {
         Text(
             text = stringResource(R.string.presentation_batch_f_connect_telegram_subtitle),
             style = MaterialTheme.typography.bodyMedium,
-            fontFamily = GoogleSansRounded,
+            fontFamily = LocalAppFontFamily.current,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
@@ -482,7 +493,7 @@ private fun InlineErrorCard(
                 text = message,
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.bodyMedium,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 color = MaterialTheme.colorScheme.onErrorContainer
             )
             FilledIconButton(
@@ -512,7 +523,7 @@ private fun StatusMessage(message: String) {
             text = message,
             modifier = Modifier.padding(20.dp),
             style = MaterialTheme.typography.bodyLarge,
-            fontFamily = GoogleSansRounded,
+            fontFamily = LocalAppFontFamily.current,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
@@ -635,7 +646,7 @@ fun ExpressivePhoneNumberInput(
                             Text(
                                 text = stringResource(R.string.presentation_batch_f_phone_number_hint),
                                 style = MaterialTheme.typography.bodyLarge.copy(
-                                    fontFamily = GoogleSansRounded,
+                                    fontFamily = LocalAppFontFamily.current,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
                                 )
                             )
@@ -650,7 +661,7 @@ fun ExpressivePhoneNumberInput(
                             Text(
                                 text = stringResource(R.string.auth_dial_plus),
                                 style = MaterialTheme.typography.bodyLarge,
-                                fontFamily = GoogleSansRounded,
+                                fontFamily = LocalAppFontFamily.current,
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -671,7 +682,7 @@ fun ExpressivePhoneNumberInput(
                                     .focusRequester(codeFocusRequester)
                                     .onFocusChanged { codeFieldFocused = it.isFocused },
                                 textStyle = MaterialTheme.typography.bodyLarge.copy(
-                                    fontFamily = GoogleSansRounded,
+                                    fontFamily = LocalAppFontFamily.current,
                                     fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.onSurface
                                 ),
@@ -689,7 +700,7 @@ fun ExpressivePhoneNumberInput(
                                             Text(
                                                 text = stringResource(R.string.presentation_batch_f_phone_country_placeholder),
                                                 style = MaterialTheme.typography.bodyLarge.copy(
-                                                    fontFamily = GoogleSansRounded,
+                                                    fontFamily = LocalAppFontFamily.current,
                                                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
                                                 )
                                             )
@@ -721,7 +732,7 @@ fun ExpressivePhoneNumberInput(
                                     .focusRequester(numFocusRequester)
                                     .onFocusChanged { numFieldFocused = it.isFocused },
                                 textStyle = MaterialTheme.typography.bodyLarge.copy(
-                                    fontFamily = GoogleSansRounded,
+                                    fontFamily = LocalAppFontFamily.current,
                                     color = MaterialTheme.colorScheme.onSurface,
                                     letterSpacing = 1.sp
                                 ),
@@ -739,7 +750,7 @@ fun ExpressivePhoneNumberInput(
                                             Text(
                                                 text = stringResource(R.string.presentation_batch_f_phone_local_placeholder),
                                                 style = MaterialTheme.typography.bodyLarge.copy(
-                                                    fontFamily = GoogleSansRounded,
+                                                    fontFamily = LocalAppFontFamily.current,
                                                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
                                                     letterSpacing = 1.sp
                                                 )
@@ -758,7 +769,7 @@ fun ExpressivePhoneNumberInput(
                 Text(
                     text = stringResource(R.string.presentation_batch_f_phone_number_hint),
                     style = MaterialTheme.typography.labelSmall.copy(
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         color = if (isActive) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.onSurfaceVariant
                     ),
@@ -819,8 +830,8 @@ fun ExpressiveCodeInput(
         OutlinedTextField(
             value = code,
             onValueChange = { onCodeChanged(it.filter(Char::isDigit).take(8)) },
-            label = { Text(stringResource(R.string.presentation_batch_f_code_field_label), fontFamily = GoogleSansRounded) },
-            placeholder = { Text(stringResource(R.string.presentation_batch_f_code_placeholder), fontFamily = GoogleSansRounded) },
+            label = { Text(stringResource(R.string.presentation_batch_f_code_field_label), fontFamily = LocalAppFontFamily.current) },
+            placeholder = { Text(stringResource(R.string.presentation_batch_f_code_placeholder), fontFamily = LocalAppFontFamily.current) },
             leadingIcon = {
                 Icon(
                     imageVector = Icons.Rounded.Sms,
@@ -854,10 +865,10 @@ fun ExpressiveCodeInput(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             TextButton(onClick = onEditPhone, enabled = !isLoading) {
-                Text(text = stringResource(R.string.presentation_batch_f_edit_phone), fontFamily = GoogleSansRounded, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(text = stringResource(R.string.presentation_batch_f_edit_phone), fontFamily = LocalAppFontFamily.current, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             TextButton(onClick = onResendCode, enabled = !isLoading) {
-                Text(text = stringResource(R.string.presentation_batch_f_resend_code), fontFamily = GoogleSansRounded, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(text = stringResource(R.string.presentation_batch_f_resend_code), fontFamily = LocalAppFontFamily.current, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
 
@@ -928,7 +939,7 @@ fun ExpressivePasswordInput(
         OutlinedTextField(
             value = localPassword,
             onValueChange = { localPassword = it },
-            label = { Text(stringResource(R.string.presentation_batch_f_password_label), fontFamily = GoogleSansRounded) },
+            label = { Text(stringResource(R.string.presentation_batch_f_password_label), fontFamily = LocalAppFontFamily.current) },
             leadingIcon = {
                 Icon(
                     imageVector = Icons.Rounded.Lock,
@@ -969,7 +980,7 @@ fun ExpressivePasswordInput(
             horizontalArrangement = Arrangement.End
         ) {
             TextButton(onClick = onEditPhone, enabled = !isLoading) {
-                Text(text = stringResource(R.string.presentation_batch_f_edit_phone), fontFamily = GoogleSansRounded, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(text = stringResource(R.string.presentation_batch_f_edit_phone), fontFamily = LocalAppFontFamily.current, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
 
@@ -1018,7 +1029,7 @@ private fun AuthStepHeader(
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleLarge,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -1028,7 +1039,7 @@ private fun AuthStepHeader(
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodyMedium,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Start
             )
@@ -1060,7 +1071,7 @@ private fun ExpressiveButton(
         text = {
             Text(
                 text = if (loading) stringResource(R.string.presentation_batch_f_please_wait) else text,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 fontWeight = FontWeight.SemiBold
             )
         },

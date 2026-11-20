@@ -36,6 +36,7 @@ import com.theveloper.pixelplay.presentation.netease.auth.NeteaseLoginActivity
 import com.theveloper.pixelplay.presentation.qqmusic.auth.QqMusicLoginActivity
 import com.theveloper.pixelplay.presentation.telegram.auth.TelegramLoginActivity
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 
 /**
  * Bottom sheet that lets the user choose between streaming providers.
@@ -96,7 +97,7 @@ fun StreamingProviderSheet(
             Text(
                 text = stringResource(R.string.presentation_batch_g_streaming_title),
                 style = MaterialTheme.typography.headlineSmall,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -106,7 +107,7 @@ fun StreamingProviderSheet(
             Text(
                 text = stringResource(R.string.presentation_batch_g_streaming_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
@@ -334,7 +335,7 @@ private fun ProviderRow(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.bodyLarge,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     fontWeight = FontWeight.Medium,
                     color = titleColor,
                     maxLines = 1,
@@ -345,7 +346,7 @@ private fun ProviderRow(
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     color = subtitleColor,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis

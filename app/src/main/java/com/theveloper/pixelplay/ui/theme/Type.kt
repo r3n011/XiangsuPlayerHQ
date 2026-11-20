@@ -33,6 +33,8 @@ data class DownloadableFont(
 )
 
 private val DOWNLOADABLE_FONTS = listOf(
+    // ⚡ 原歌词选择器的 4 个快速下载字体已迁移到「应用字体市场」（见 DOWNLOADABLE_APP_FONTS）；
+    //   key 保留在此列表中以兼容既有用户的歌词字体选择（resolveLyricsFontFamily 按文件加载）。
     // 站酷系/马善政走 jsDelivr 托管 Google Fonts 官方文件（国内可达）；
     // 得意黑官方只发布 release zip，下载后需解压提取 ttf。
     DownloadableFont("ZCOOL_KUAILE", "站酷快乐体", "zcool_kuaile.ttf",
@@ -43,7 +45,39 @@ private val DOWNLOADABLE_FONTS = listOf(
         "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/mashanzheng/MaShanZheng-Regular.ttf"),
     DownloadableFont("SMILEY_SANS", "得意黑", "smiley_sans.ttf",
         "https://github.com/atelier-anchor/smiley-sans/releases/download/v2.0.1/smiley-sans-v2.0.1.zip"),
+    // 应用字体市场（源仓库 zispace/hanzi-fonts，仅收录开源 / 免费商用授权字体；
+    // 方正、汉仪等商业授权字体不纳入自动下载）
+    DownloadableFont("MISANS", "MiSans（小米）", "MiSans-Regular.ttf",
+        "https://raw.githubusercontent.com/zispace/hanzi-fonts/main/%2A%E6%9B%B4%E5%A4%9A%E5%AD%97%E4%BD%93/MiSans-Regular.ttf"),
+    DownloadableFont("HARMONYOS_SANS", "HarmonyOS Sans（华为）", "HarmonyOS_Sans_SC_Regular.ttf",
+        "https://raw.githubusercontent.com/zispace/hanzi-fonts/main/%2A%E6%9B%B4%E5%A4%9A%E5%AD%97%E4%BD%93/HarmonyOS_Sans_SC_Regular.ttf"),
+    DownloadableFont("ALIPUHUITI", "阿里巴巴普惠体 3.0", "AlibabaPuHuiTi-3-55-Regular.ttf",
+        "https://raw.githubusercontent.com/zispace/hanzi-fonts/main/%2A%E6%9B%B4%E5%A4%9A%E5%AD%97%E4%BD%93/AlibabaPuHuiTi-3-55-Regular.ttf"),
+    DownloadableFont("IBMPLEX_SANS_SC", "IBM Plex Sans SC", "IBMPlexSansSC-Regular.ttf",
+        "https://raw.githubusercontent.com/zispace/hanzi-fonts/main/%2A%E6%9B%B4%E5%A4%9A%E5%AD%97%E4%BD%93/IBMPlexSansSC-Regular.ttf"),
+    DownloadableFont("SOURCEHAN_SANS", "思源黑体", "SourceHanSansSC-Regular.otf",
+        "https://raw.githubusercontent.com/zispace/hanzi-fonts/main/%2A%E6%9B%B4%E5%A4%9A%E5%AD%97%E4%BD%93/SourceHanSansSC-Regular.otf"),
+    DownloadableFont("SOURCEHAN_SERIF", "思源宋体", "SourceHanSerifSC-Regular.otf",
+        "https://raw.githubusercontent.com/zispace/hanzi-fonts/main/%2A%E6%9B%B4%E5%A4%9A%E5%AD%97%E4%BD%93/SourceHanSerifSC-Regular.otf"),
 )
+
+/**
+ * 应用字体市场 = 全部可按需下载的字体（歌词选择器历史字体 + 像素字体市场新字体）。
+ * ⚡ 歌词选择器不再提供快速下载入口（未下载的字体不出现在其列表），
+ *   统一在「外观 → 应用字体 → 字体市场」按需下载；下载后两边都可直接选用。
+ * 仅收录开源 / 免费商用授权字体；方正、汉仪等商业授权字体不纳入自动下载。
+ * 下载走 [downloadAppFont] / [downloadLyricsFont]，共用 filesDir/fonts/ 存储。
+ */
+val DOWNLOADABLE_APP_FONTS = DOWNLOADABLE_FONTS
+
+fun downloadableAppFontForKey(key: String): DownloadableFont? =
+    DOWNLOADABLE_APP_FONTS.find { it.key == key.uppercase() }
+
+/** 检查应用字体市场字体是否已下载到本地 filesDir/fonts/ */
+fun isAppFontDownloaded(context: Context, key: String): Boolean {
+    val dl = downloadableAppFontForKey(key) ?: return false
+    return File(getCustomFontsDir(context), dl.fileName).exists()
+}
 
 fun downloadableFontForKey(key: String): DownloadableFont? =
     DOWNLOADABLE_FONTS.find { it.key == key.uppercase() }
@@ -71,6 +105,24 @@ suspend fun downloadLyricsFont(
     onProgress: ((Int) -> Unit)? = null
 ): Boolean {
     val dl = downloadableFontForKey(key) ?: return false
+    return downloadFontFile(context, dl, onProgress)
+}
+
+/** 下载应用字体市场的字体（同 [downloadLyricsFont] 的通道与镜像策略）。 */
+suspend fun downloadAppFont(
+    context: Context,
+    key: String,
+    onProgress: ((Int) -> Unit)? = null
+): Boolean {
+    val dl = downloadableAppFontForKey(key) ?: return false
+    return downloadFontFile(context, dl, onProgress)
+}
+
+private suspend fun downloadFontFile(
+    context: Context,
+    dl: DownloadableFont,
+    onProgress: ((Int) -> Unit)? = null
+): Boolean {
     val targetFile = File(getCustomFontsDir(context), dl.fileName)
     if (targetFile.exists()) return true
     val dir = getCustomFontsDir(context)
@@ -211,7 +263,8 @@ fun listCustomFonts(context: Context): List<String> {
     // ⚡ 排除"内置可下载字体"的落盘文件：这些字体已经作为预定义条目出现在字体列表里，
     //    如果在这里再被当成自定义字体返回，下载完成后列表里就会多出一条以文件原名
     //    （如 zcool_kuaile）显示的重复杂目。
-    val builtInFileNames = DOWNLOADABLE_FONTS.map { it.fileName.lowercase() }.toSet()
+    val builtInFileNames = (DOWNLOADABLE_FONTS + DOWNLOADABLE_APP_FONTS)
+        .map { it.fileName.lowercase() }.toSet()
     return dir.listFiles()
         ?.filter { it.isFile && (it.extension.equals("ttf", true) || it.extension.equals("otf", true)) }
         ?.map { it.name }
@@ -249,6 +302,31 @@ fun deleteCustomFont(context: Context, key: String): Boolean {
     if (fileName.isBlank()) return false
     val fontFile = File(getCustomFontsDir(context), fileName)
     return fontFile.exists() && fontFile.isFile && fontFile.delete()
+}
+
+/**
+ * 从系统文件选择器导入自定义字体（应用字体设置 → 导入自定义字体）。
+ * 仅接受 .ttf / .otf；复制到 filesDir/fonts/ 与歌词字体共用存储。
+ * @return 成功返回导入后的字体 key（CUSTOM:<fileName>），失败返回 null
+ */
+fun importCustomFont(context: Context, uri: android.net.Uri): String? {
+    val displayName = uri.lastPathSegment?.substringAfterLast('/') ?: return null
+    val cleanName = displayName.substringBefore('?').trim()
+    val extension = cleanName.substringAfterLast('.', "")
+    if (!extension.equals("ttf", true) && !extension.equals("otf", true)) return null
+    if (cleanName.isBlank() || cleanName.length > 128) return null
+    return try {
+        val dir = getCustomFontsDir(context)
+        if (!dir.exists()) dir.mkdirs()
+        val target = File(dir, cleanName)
+        context.contentResolver.openInputStream(uri)?.use { input ->
+            target.outputStream().use { output -> input.copyTo(output) }
+        } ?: return null
+        if (target.exists() && target.length() > 1024) CUSTOM_FONT_PREFIX + cleanName
+        else { target.delete(); null }
+    } catch (_: Exception) {
+        null
+    }
 }
 
 private val montserrat = GoogleFont("Montserrat")
@@ -486,6 +564,21 @@ val AppFontDisplayNames: Map<String, String> = mapOf(
 fun resolveAppFontFamily(context: Context, key: String): FontFamily {
     if (key.startsWith(CUSTOM_FONT_PREFIX, ignoreCase = true)) {
         return customFontFamily(context, key) ?: GoogleSansRounded
+    }
+    // 应用字体市场字体（已下载）：按其落盘文件加载（resolveAppFontFamily 只服务于应用字体）
+    downloadableAppFontForKey(key)?.let { dl ->
+        val fontFile = File(getCustomFontsDir(context), dl.fileName)
+        if (!fontFile.exists()) return GoogleSansRounded
+        return try {
+            FontFamily(
+                androidx.compose.ui.text.font.Font(
+                    file = fontFile,
+                    weight = FontWeight.Normal
+                )
+            )
+        } catch (_: Exception) {
+            GoogleSansRounded
+        }
     }
     return AppFontFamilies[key.uppercase()] ?: GoogleSansRounded
 }

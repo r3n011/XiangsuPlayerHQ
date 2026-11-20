@@ -97,6 +97,7 @@ import com.theveloper.pixelplay.presentation.viewmodel.PlaylistUiState
 import com.theveloper.pixelplay.presentation.viewmodel.PlaylistSelectionStateHolder
 import com.theveloper.pixelplay.utils.formatSongCount
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import com.theveloper.pixelplay.ui.theme.LocalShowScrollbar
 import androidx.compose.foundation.combinedClickable
 import kotlinx.coroutines.flow.map
@@ -570,7 +571,7 @@ fun PlaylistItem(
                 ) {
                     Text(
                         text = playlist.name,
-                        style = MaterialTheme.typography.titleMedium.copy(fontFamily = GoogleSansRounded),
+                        style = MaterialTheme.typography.titleMedium.copy(fontFamily = LocalAppFontFamily.current),
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -733,7 +734,7 @@ fun CreatePlaylistDialogRedesigned(
                     text = stringResource(R.string.create_playlist_dialog_title),
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
 

@@ -67,6 +67,7 @@ import androidx.compose.ui.unit.sp
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.ui.theme.ExpTitleTypography
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -255,7 +256,7 @@ fun AiPlaylistSheet(
                             stringResource(R.string.ai_playlist_subtitle_generator)
                         },
                         style = MaterialTheme.typography.titleMedium,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         color = if (isSuccess) colors.tertiary else colors.onSurfaceVariant
                     )
                 }
@@ -283,7 +284,7 @@ fun AiPlaylistSheet(
                     Text(
                         text = stringResource(R.string.ai_playlist_section_size),
                         style = MaterialTheme.typography.labelLarge,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         fontWeight = FontWeight.SemiBold,
                         color = colors.onSurface
                     )
@@ -402,7 +403,7 @@ fun AiPlaylistSheet(
                             color = colors.onTertiaryContainer,
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.ExtraBold,
-                            fontFamily = GoogleSansRounded
+                            fontFamily = LocalAppFontFamily.current
                         )
                     }
                 }
@@ -455,7 +456,7 @@ fun AiPlaylistSheet(
                         Text(
                             text = stringResource(R.string.ai_playlist_ready_to_play),
                             style = MaterialTheme.typography.titleMedium,
-                            fontFamily = GoogleSansRounded,
+                            fontFamily = LocalAppFontFamily.current,
                             fontWeight = FontWeight.SemiBold,
                             color = colors.onTertiaryContainer
                         )
@@ -469,7 +470,7 @@ fun AiPlaylistSheet(
                         Text(
                             text = status ?: stringResource(R.string.ai_playlist_generating),
                             style = MaterialTheme.typography.titleMedium,
-                            fontFamily = GoogleSansRounded,
+                            fontFamily = LocalAppFontFamily.current,
                             fontWeight = FontWeight.SemiBold,
                             color = colors.onPrimaryContainer
                         )
@@ -487,7 +488,7 @@ fun AiPlaylistSheet(
                         Text(
                             text = stringResource(R.string.ai_playlist_generate),
                             style = MaterialTheme.typography.titleMedium,
-                            fontFamily = GoogleSansRounded,
+                            fontFamily = LocalAppFontFamily.current,
                             fontWeight = FontWeight.SemiBold,
                             color = if (prompt.isBlank()) 
                                 colors.onSurfaceVariant 

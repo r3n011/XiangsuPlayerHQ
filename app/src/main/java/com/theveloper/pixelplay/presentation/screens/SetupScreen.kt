@@ -148,6 +148,7 @@ import com.theveloper.pixelplay.presentation.viewmodel.SetupUiState
 import com.theveloper.pixelplay.presentation.viewmodel.SetupViewModel
 import com.theveloper.pixelplay.ui.theme.ExpTitleTypography
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import com.theveloper.pixelplay.utils.StorageInfo
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -665,7 +666,7 @@ fun WelcomePage() {
             Text(
                 text = stringResource(R.string.app_name),
                 style = MaterialTheme.typography.displayLarge.copy(
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     fontSize = 46.sp,
                     color = MaterialTheme.colorScheme.primary,
                     lineHeight = 1.1.em
@@ -1013,7 +1014,7 @@ fun ThemeSelectionPage(
             Text(
                 text = stringResource(R.string.setup_theme_title),
                 style = MaterialTheme.typography.displayMedium.copy(
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     fontSize = 32.sp
                 ),
                 textAlign = TextAlign.Center
@@ -1199,7 +1200,7 @@ fun LibraryLayoutPage(
             Text(
                 text = stringResource(R.string.setup_library_layout_title),
                 style = MaterialTheme.typography.displayMedium.copy(
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     fontSize = 32.sp
                 ),
                 textAlign = TextAlign.Center
@@ -1341,7 +1342,7 @@ fun LibraryHeaderPreview(isCompact: Boolean) {
                     ) {
                         Text(
                             text = stringResource(R.string.tab_library),
-                            fontFamily = GoogleSansRounded,
+                            fontFamily = LocalAppFontFamily.current,
                             fontWeight = FontWeight.ExtraBold,
                             color = MaterialTheme.colorScheme.primary,
                             fontSize = 40.sp,
@@ -1564,7 +1565,7 @@ fun PermissionPageLayout(
             Text(
                 text = title,
                 style = MaterialTheme.typography.displayMedium.copy(
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     fontSize = 32.sp
                 ),
                 textAlign = TextAlign.Center
@@ -1709,7 +1710,7 @@ private fun SetupRestoreDialog(
                     Text(
                         text = stringResource(R.string.setup_restore_backup_title),
                         style = MaterialTheme.typography.displaySmall.copy(
-                            fontFamily = GoogleSansRounded
+                            fontFamily = LocalAppFontFamily.current
                         ),
                         fontWeight = FontWeight.Bold
                     )
@@ -2229,7 +2230,7 @@ fun NavBarLayoutPage(
             Text(
                 text = stringResource(R.string.setup_app_navigation_title),
                 style = MaterialTheme.typography.displayMedium.copy(
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     fontSize = 32.sp
                 ),
                 textAlign = TextAlign.Center

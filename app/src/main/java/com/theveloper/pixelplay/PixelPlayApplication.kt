@@ -14,7 +14,6 @@ import androidx.work.Configuration
 import coil.ImageLoader
 import coil.ImageLoaderFactory
 import coil.memory.MemoryCache
-import com.theveloper.pixelplay.data.analytics.UmengAnalytics
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
 import com.theveloper.pixelplay.data.diagnostics.AdvancedPerformanceDiagnosticsController
 import com.theveloper.pixelplay.data.lx.LxJsEngine
@@ -204,15 +203,8 @@ class PixelPlayApplication : Application(), ImageLoaderFactory, Configuration.Pr
             //    冷启动时主线程在首帧前的每一毫秒都直接等于用户可见的等待，
             //    这里能省下统计 SDK 初始化与 JS 引擎预热的开销。
             AppStartup.runAfterFirstFrame {
-                // 友盟移动统计 U-App：preInit 必须早于 init，且两者都必须在主线程。
-                // 延后到首帧后不影响统计准确性（用户此刻还没看到界面）。
-                try {
-                    UmengAnalytics.preInit(this)
-                    UmengAnalytics.init(this)
-                    UmengAnalytics.sendOnboardingTestEvent(this)
-                } catch (t: Throwable) {
-                    android.util.Log.e("PixelPlay", "Failed to init Umeng analytics: ${t.message}")
-                }
+                // 隐私政策承诺「不使用任何第三方统计 SDK」（KI-012）：
+                // 已移除友盟统计；首帧后任务保留给 JS 引擎预热等真正需要的初始化。
 
                 // ⚡ 落雪 JS 引擎预加载：首帧后继续静置一段时间再后台初始化音源脚本
                 //    （QuickJS 上下文创建 + 脚本解析会抢 CPU/IO，过早启动会拖慢首屏后的

@@ -162,7 +162,8 @@
     <string name="presentation_batch_f_telegram_login_title">Telegram-innlogging</string>
     <string name="presentation_batch_f_telegram_edit_number_chip">Du redigerer nummeret ditt. Ved å sende koden på nytt erstattes den forrige.</string>
     <string name="presentation_batch_f_working">Arbeider…</string>
-    <string name="presentation_batch_f_telegram_status_initializing">Initialiserer Telegram…</string>
+        <string name="presentation_batch_f_telegram_init_failed">"Klarte ikke initialisere TDLib. Telegram-funksjoner er utilgjengelige."</string>
+<string name="presentation_batch_f_telegram_status_initializing">Initialiserer Telegram…</string>
     <string name="presentation_batch_f_telegram_status_logging_out">Logger ut…</string>
     <string name="presentation_batch_f_telegram_status_closing">Lukker sesjon…</string>
     <string name="presentation_batch_f_telegram_status_closed">Sesjon lukket. Gjenåpne innlogging for å fortsette.</string>

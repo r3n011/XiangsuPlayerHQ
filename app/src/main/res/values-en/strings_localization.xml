@@ -535,6 +535,7 @@
     <string name="ui_not_enough_microphone_audio_received">"Not enough microphone audio received"</string>
     <string name="ui_not_signed_in">"Not signed in"</string>
     <string name="ui_not_tested">"Not tested"</string>
+    <string name="ui_not_supported_yet">"Not supported yet"</string>
     <string name="ui_now_playing">"Now playing"</string>
     <string name="ui_now_playing_4c0a5b8">"Now playing: %1$s"</string>
     <string name="ui_official_api_returned_code">"Official API returned code=%1$s"</string>

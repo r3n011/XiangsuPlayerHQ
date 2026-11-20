@@ -168,6 +168,7 @@
     <string name="presentation_batch_f_telegram_edit_number_chip">你正在编辑手机号。重新发送验证码将替换上一次发送的验证码。</string>
     <string name="presentation_batch_f_working">处理中……</string>
     <string name="presentation_batch_f_telegram_status_initializing">正在初始化 Telegram……</string>
+    <string name="presentation_batch_f_telegram_init_failed">"TDLib 初始化失败，Telegram 功能不可用"</string>
     <string name="presentation_batch_f_telegram_status_logging_out">正在退出登录……</string>
     <string name="presentation_batch_f_telegram_status_closing">正在关闭会话……</string>
     <string name="presentation_batch_f_telegram_status_closed">会话已关闭。重新打开登录以继续。</string>

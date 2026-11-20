@@ -60,6 +60,7 @@ import com.theveloper.pixelplay.data.model.SortOption
 import com.theveloper.pixelplay.data.model.getDisplayNameResId
 import com.theveloper.pixelplay.data.model.getMethodLabelResId
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -115,7 +116,7 @@ fun LibrarySortBottomSheet(
             Text(
                 text = title,
                 style = MaterialTheme.typography.headlineMedium,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(start = 2.dp, top = 0.dp, bottom = 16.dp)
             )
@@ -282,7 +283,7 @@ fun LibrarySortBottomSheet(
                 Text(
                     text = viewSectionTitle,
                     style = MaterialTheme.typography.headlineSmall,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(start = 2.dp, top = 8.dp, bottom = 8.dp)
                 )
@@ -305,7 +306,7 @@ fun LibrarySortBottomSheet(
                 Text(
                     text = stringResource(R.string.presentation_batch_g_sort_source),
                     style = MaterialTheme.typography.headlineSmall,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(start = 2.dp, top = 8.dp, bottom = 8.dp)
                 )

@@ -74,6 +74,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import com.theveloper.pixelplay.ui.theme.PixelPlayTheme
 import dagger.hilt.android.AndroidEntryPoint
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
@@ -136,7 +137,7 @@ fun NavidromeLoginScreen(
                 title = {
                     Text(
                         text = stringResource(R.string.auth_navidrome_title),
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         fontWeight = FontWeight.SemiBold
                     )
                 },
@@ -223,7 +224,7 @@ fun NavidromeLoginScreen(
             Text(
                 text = stringResource(R.string.auth_navidrome_title),
                 style = MaterialTheme.typography.headlineSmall,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -249,7 +250,7 @@ fun NavidromeLoginScreen(
                     modifier = Modifier.padding(16.dp),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontFamily = GoogleSansRounded
+                    fontFamily = LocalAppFontFamily.current
                 )
             }
 
@@ -268,7 +269,7 @@ fun NavidromeLoginScreen(
                     Text(
                         text = stringResource(R.string.auth_connection_details),
                         style = MaterialTheme.typography.titleMedium,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         fontWeight = FontWeight.Bold
                     )
 
@@ -277,7 +278,7 @@ fun NavidromeLoginScreen(
                     Text(
                         text = stringResource(R.string.auth_connection_details_subtitle),
                         style = MaterialTheme.typography.bodySmall,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
@@ -378,7 +379,7 @@ fun NavidromeLoginScreen(
                     ) {
                         Text(
                             text = stringResource(R.string.auth_prefill_https),
-                            fontFamily = GoogleSansRounded,
+                            fontFamily = LocalAppFontFamily.current,
                             fontWeight = FontWeight.Medium
                         )
                     }
@@ -406,9 +407,9 @@ fun NavidromeLoginScreen(
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(stringResource(R.string.auth_connecting), fontFamily = GoogleSansRounded)
+                    Text(stringResource(R.string.auth_connecting), fontFamily = LocalAppFontFamily.current)
                 } else {
-                    Text(stringResource(R.string.auth_connect), fontFamily = GoogleSansRounded, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.auth_connect), fontFamily = LocalAppFontFamily.current, fontWeight = FontWeight.SemiBold)
                 }
             }
 
@@ -419,7 +420,7 @@ fun NavidromeLoginScreen(
                 text = stringResource(R.string.auth_navidrome_footer),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontFamily = GoogleSansRounded
+                fontFamily = LocalAppFontFamily.current
             )
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -451,24 +452,24 @@ private fun ExpressiveLoginField(
         singleLine = true,
         shape = shape,
         textStyle = MaterialTheme.typography.bodyLarge.copy(
-            fontFamily = GoogleSansRounded
+            fontFamily = LocalAppFontFamily.current
         ),
         label = {
             Text(
                 text = label,
-                fontFamily = GoogleSansRounded
+                fontFamily = LocalAppFontFamily.current
             )
         },
         placeholder = {
             Text(
                 text = placeholder,
-                fontFamily = GoogleSansRounded
+                fontFamily = LocalAppFontFamily.current
             )
         },
         supportingText = {
             Text(
                 text = supportingText,
-                fontFamily = GoogleSansRounded
+                fontFamily = LocalAppFontFamily.current
             )
         },
         leadingIcon = {

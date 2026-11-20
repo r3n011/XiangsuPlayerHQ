@@ -1,6 +1,7 @@
 package com.theveloper.pixelplay.data.plugin
 
 import android.content.Context
+import com.theveloper.pixelplay.utils.ZipNameCharsets
 import dagger.hilt.android.qualifiers.ApplicationContext
 import timber.log.Timber
 import java.io.File
@@ -34,7 +35,8 @@ class XsZipImporter @Inject constructor(
         }
         XsLog.i(XsLog.IMPORTER, "import start: %s (%d bytes, source=%s)", zipFile.name, zipFile.length(), source)
         val zip = try {
-            ZipFile(zipFile)
+            // 先按 UTF-8 打开；GBK 老包解码失败/乱码时回退 GB18030 重开（KI-047）
+            ZipNameCharsets.openZipFile(zipFile)
         } catch (e: Exception) {
             throw XsInstallException(XsErrors.INVALID_ZIP, "zip 结构损坏：${e.message}")
         }

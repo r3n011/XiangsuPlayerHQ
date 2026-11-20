@@ -58,6 +58,7 @@ import com.theveloper.pixelplay.data.github.UpdateChecker
 import com.theveloper.pixelplay.presentation.components.subcomps.SineWaveLine
 import com.theveloper.pixelplay.ui.theme.ExpTitleTypography
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 import java.time.Instant
 import java.time.ZoneId
@@ -96,7 +97,7 @@ fun ChangelogBottomSheet(
         ) {
             Text(
                 text = stringResource(R.string.presentation_batch_g_changelog_title),
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 style = ExpTitleTypography.displaySmall,
                 color = MaterialTheme.colorScheme.onSurface
             )

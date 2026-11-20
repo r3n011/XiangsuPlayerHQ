@@ -60,6 +60,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 
 /**
  * QQ 音乐手机号登录整页。
@@ -113,7 +114,7 @@ fun QqMusicPhoneLoginScreen(
                 title = {
                     Text(
                         text = stringResource(R.string.qq_login_brand_title),
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         style = MaterialTheme.typography.titleMedium
                     )
                 },
@@ -231,7 +232,7 @@ fun QqMusicPhoneLoginPane(
         TextButton(onClick = onBackToWeb) {
             Text(
                 text = stringResource(R.string.qq_login_mode_web),
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 fontWeight = FontWeight.Medium
             )
         }
@@ -263,7 +264,7 @@ private fun QqMusicBrandingHeader() {
         Text(
             text = stringResource(R.string.qq_login_brand_title),
             style = MaterialTheme.typography.headlineSmall,
-            fontFamily = GoogleSansRounded,
+            fontFamily = LocalAppFontFamily.current,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
         )
@@ -271,7 +272,7 @@ private fun QqMusicBrandingHeader() {
         Text(
             text = stringResource(R.string.qq_login_brand_subtitle),
             style = MaterialTheme.typography.bodyMedium,
-            fontFamily = GoogleSansRounded,
+            fontFamily = LocalAppFontFamily.current,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
@@ -325,7 +326,7 @@ private fun QqMusicLoadingCard(message: String) {
             Text(
                 text = message.ifBlank { stringResource(R.string.qq_login_loading) },
                 style = MaterialTheme.typography.bodyMedium,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 color = MaterialTheme.colorScheme.onSurface
             )
             Spacer(Modifier.height(10.dp))
@@ -353,7 +354,7 @@ private fun QqMusicInlineErrorCard(message: String, onDismiss: () -> Unit) {
                 text = message,
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.bodyMedium,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 color = MaterialTheme.colorScheme.onErrorContainer
             )
             FilledIconButton(
@@ -385,7 +386,7 @@ private fun QqMusicSecurityCard(onOpen: () -> Unit, onDismiss: () -> Unit) {
             Text(
                 text = stringResource(R.string.qq_login_security_title),
                 style = MaterialTheme.typography.titleSmall,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSecondaryContainer
             )
@@ -393,7 +394,7 @@ private fun QqMusicSecurityCard(onOpen: () -> Unit, onDismiss: () -> Unit) {
             Text(
                 text = stringResource(R.string.qq_login_security_body),
                 style = MaterialTheme.typography.bodySmall,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
             )
             Row(
@@ -406,14 +407,14 @@ private fun QqMusicSecurityCard(onOpen: () -> Unit, onDismiss: () -> Unit) {
                 TextButton(onClick = onDismiss) {
                     Text(
                         text = stringResource(R.string.qq_login_security_ignore),
-                        fontFamily = GoogleSansRounded
+                        fontFamily = LocalAppFontFamily.current
                     )
                 }
                 Spacer(Modifier.width(4.dp))
                 Button(onClick = onOpen) {
                     Text(
                         text = stringResource(R.string.qq_login_security_open),
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -455,7 +456,7 @@ private fun QqMusicAuthStepHeader(
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleLarge,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -463,7 +464,7 @@ private fun QqMusicAuthStepHeader(
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodyMedium,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Start
             )
@@ -495,7 +496,7 @@ private fun QqMusicExpressiveButton(
         text = {
             Text(
                 text = if (loading) stringResource(R.string.qq_login_loading) else text,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 fontWeight = FontWeight.SemiBold
             )
         },
@@ -580,7 +581,7 @@ private fun QqMusicPhoneNumberStep(
                 Text(
                     text = "+86",
                     style = MaterialTheme.typography.bodyLarge,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -603,7 +604,7 @@ private fun QqMusicPhoneNumberStep(
                         .focusRequester(phoneFocusRequester)
                         .onFocusChanged { phoneFocused = it.isFocused },
                     textStyle = MaterialTheme.typography.bodyLarge.copy(
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         color = MaterialTheme.colorScheme.onSurface,
                         letterSpacing = 1.sp
                     ),
@@ -619,7 +620,7 @@ private fun QqMusicPhoneNumberStep(
                                 Text(
                                     text = stringResource(R.string.kugou_login_phone_placeholder),
                                     style = MaterialTheme.typography.bodyLarge.copy(
-                                        fontFamily = GoogleSansRounded,
+                                        fontFamily = LocalAppFontFamily.current,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                             .copy(alpha = 0.45f),
                                         letterSpacing = 1.sp
@@ -673,7 +674,7 @@ private fun QqMusicSmsCodeStep(
         OutlinedTextField(
             value = code,
             onValueChange = { raw -> onCodeChanged(raw.filter(Char::isDigit).take(6)) },
-            label = { Text(stringResource(R.string.kugou_login_code_label), fontFamily = GoogleSansRounded) },
+            label = { Text(stringResource(R.string.kugou_login_code_label), fontFamily = LocalAppFontFamily.current) },
             leadingIcon = {
                 Icon(
                     imageVector = Icons.Rounded.Sms,
@@ -711,7 +712,7 @@ private fun QqMusicSmsCodeStep(
             TextButton(onClick = { if (!isLoading) onEditPhone() }) {
                 Text(
                     text = stringResource(R.string.qq_login_edit_phone),
-                    fontFamily = GoogleSansRounded
+                    fontFamily = LocalAppFontFamily.current
                 )
             }
             TextButton(
@@ -724,7 +725,7 @@ private fun QqMusicSmsCodeStep(
                     } else {
                         stringResource(R.string.kugou_login_code_send)
                     },
-                    fontFamily = GoogleSansRounded
+                    fontFamily = LocalAppFontFamily.current
                 )
             }
         }

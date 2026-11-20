@@ -46,6 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 
 @Composable
@@ -126,7 +127,7 @@ fun ExpressiveOfflineState(
         Text(
             text = message,
             style = if (isDialog) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.headlineMedium,
-            fontFamily = GoogleSansRounded,
+            fontFamily = LocalAppFontFamily.current,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center
@@ -137,7 +138,7 @@ fun ExpressiveOfflineState(
         Text(
             text = description,
             style = MaterialTheme.typography.bodyLarge,
-            fontFamily = GoogleSansRounded,
+            fontFamily = LocalAppFontFamily.current,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth(0.9f)
@@ -164,7 +165,7 @@ fun ExpressiveOfflineState(
             Spacer(modifier = Modifier.size(8.dp))
             Text(
                 "Try Again",
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 fontWeight = FontWeight.SemiBold
             )
         }

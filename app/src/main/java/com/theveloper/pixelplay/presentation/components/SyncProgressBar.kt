@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.worker.SyncProgress
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import kotlin.math.roundToInt
 
 /**
@@ -68,7 +69,7 @@ fun SyncProgressBar(
                 Text(
                     text = getPhaseText(syncProgress),
                     style = MaterialTheme.typography.titleMedium,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -76,7 +77,7 @@ fun SyncProgressBar(
                 Text(
                     text = stringResource(R.string.presentation_batch_g_sync_percent, percentage),
                     style = MaterialTheme.typography.titleMedium,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )

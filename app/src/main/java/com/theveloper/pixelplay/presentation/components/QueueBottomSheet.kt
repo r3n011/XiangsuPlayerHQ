@@ -154,6 +154,7 @@ import com.theveloper.pixelplay.presentation.viewmodel.SettingsViewModel
 import com.theveloper.pixelplay.presentation.utils.LocalAppHapticsConfig
 import com.theveloper.pixelplay.presentation.utils.performAppCompatHapticFeedback
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import com.theveloper.pixelplay.ui.theme.LocalShowScrollbar
 import com.theveloper.pixelplay.MainActivity
 import dev.chrisbanes.haze.hazeSource
@@ -1448,7 +1449,7 @@ private fun QueueHeader(
                 },
                 text = stringResource(R.string.presentation_batch_e_next_up),
                 style = MaterialTheme.typography.headlineLarge.copy(
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     fontWeight = FontWeight.SemiBold
                 ),
                 color = MaterialTheme.colorScheme.onSurface
@@ -1661,7 +1662,7 @@ fun SaveQueueAsPlaylistSheet(
                                     modifier = Modifier.padding(start = 4.dp),
                                     text = stringResource(R.string.presentation_batch_e_save_as_playlist_sheet_title),
                                     style = MaterialTheme.typography.headlineMedium,
-                                    fontFamily = GoogleSansRounded,
+                                    fontFamily = LocalAppFontFamily.current,
                                     fontWeight = FontWeight.SemiBold,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis

@@ -17,6 +17,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import androidx.compose.ui.res.stringResource
 import com.theveloper.pixelplay.R
 import androidx.compose.ui.text.style.TextOverflow
@@ -32,7 +33,7 @@ fun SavePresetDialog(
     PixelAlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text(text = stringResource(R.string.equalizer_save_custom_preset_title), fontFamily = GoogleSansRounded)
+            Text(text = stringResource(R.string.equalizer_save_custom_preset_title), fontFamily = LocalAppFontFamily.current)
         },
         text = {
             Column {
@@ -96,7 +97,7 @@ fun RenamePresetDialog(
     PixelAlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text(text = stringResource(R.string.equalizer_rename_preset_title), fontFamily = GoogleSansRounded)
+            Text(text = stringResource(R.string.equalizer_rename_preset_title), fontFamily = LocalAppFontFamily.current)
         },
         text = {
             Column {

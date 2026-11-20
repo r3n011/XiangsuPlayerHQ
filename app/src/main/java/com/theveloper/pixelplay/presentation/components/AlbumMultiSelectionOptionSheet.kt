@@ -50,6 +50,7 @@ import com.theveloper.pixelplay.data.model.Album
 import com.theveloper.pixelplay.presentation.components.subcomps.AutoSizingTextToFill
 import com.theveloper.pixelplay.presentation.components.subcomps.TightWrapText
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -89,7 +90,7 @@ fun AlbumMultiSelectionOptionSheet(
                         text = stringResource(R.string.presentation_batch_g_album_sel_count, selectedAlbums.size),
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         minFontSize = 16.sp,
                         maxFontSizeLimit = 24.sp,
                         maxLines = 2,
@@ -99,7 +100,7 @@ fun AlbumMultiSelectionOptionSheet(
                         text = stringResource(R.string.presentation_batch_g_album_sel_selected),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         overflow = TextOverflow.Ellipsis,
                         maxLines = 1,
                     )

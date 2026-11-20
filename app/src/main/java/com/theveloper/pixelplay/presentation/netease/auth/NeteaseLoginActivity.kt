@@ -84,6 +84,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import com.theveloper.pixelplay.ui.theme.PixelPlayTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
@@ -244,7 +245,7 @@ fun NeteasePhoneLoginScreen(
             Text(
                 text = stringResource(R.string.auth_phone_login_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.height(24.dp))
@@ -253,8 +254,8 @@ fun NeteasePhoneLoginScreen(
                 value = phone,
                 onValueChange = { input -> phone = input.filter { it.isDigit() }.take(15) },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text(text = stringResource(R.string.auth_phone_number_label), fontFamily = GoogleSansRounded) },
-                prefix = { Text(text = "+$ctcode ", fontFamily = GoogleSansRounded) },
+                label = { Text(text = stringResource(R.string.auth_phone_number_label), fontFamily = LocalAppFontFamily.current) },
+                prefix = { Text(text = "+$ctcode ", fontFamily = LocalAppFontFamily.current) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                 enabled = loginState !is NeteaseLoginState.Loading
@@ -270,7 +271,7 @@ fun NeteasePhoneLoginScreen(
                     value = captcha,
                     onValueChange = { input -> captcha = input.filter { it.isDigit() }.take(8) },
                     modifier = Modifier.weight(1f),
-                    label = { Text(text = stringResource(R.string.auth_captcha_label), fontFamily = GoogleSansRounded) },
+                    label = { Text(text = stringResource(R.string.auth_captcha_label), fontFamily = LocalAppFontFamily.current) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                     enabled = loginState !is NeteaseLoginState.Loading
@@ -290,12 +291,12 @@ fun NeteasePhoneLoginScreen(
                     } else if (resendSeconds > 0) {
                         Text(
                             text = stringResource(R.string.auth_captcha_resend_seconds, resendSeconds),
-                            fontFamily = GoogleSansRounded
+                            fontFamily = LocalAppFontFamily.current
                         )
                     } else {
                         Text(
                             text = stringResource(R.string.auth_send_captcha),
-                            fontFamily = GoogleSansRounded
+                            fontFamily = LocalAppFontFamily.current
                         )
                     }
                 }
@@ -325,7 +326,7 @@ fun NeteasePhoneLoginScreen(
                 } else {
                     Text(
                         text = stringResource(R.string.auth_phone_login_action),
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -339,7 +340,7 @@ fun NeteasePhoneLoginScreen(
             ) {
                 Text(
                     text = stringResource(R.string.auth_phone_login_use_web),
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -442,12 +443,12 @@ fun NeteaseWebLoginScreen(
         PixelAlertDialog(
             onDismissRequest = { showExitDialog = false },
             title = {
-                Text(text = stringResource(R.string.auth_web_exit_confirm_title_netease), fontFamily = GoogleSansRounded)
+                Text(text = stringResource(R.string.auth_web_exit_confirm_title_netease), fontFamily = LocalAppFontFamily.current)
             },
             text = {
                 Text(
                     text = stringResource(R.string.auth_web_exit_confirm_body),
-                    fontFamily = GoogleSansRounded
+                    fontFamily = LocalAppFontFamily.current
                 )
             },
             confirmButton = {
@@ -457,12 +458,12 @@ fun NeteaseWebLoginScreen(
                         onClose()
                     }
                 ) {
-                    Text(text = stringResource(R.string.auth_exit), fontFamily = GoogleSansRounded, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(text = stringResource(R.string.auth_exit), fontFamily = LocalAppFontFamily.current, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showExitDialog = false }) {
-                    Text(text = stringResource(R.string.auth_stay), fontFamily = GoogleSansRounded, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(text = stringResource(R.string.auth_stay), fontFamily = LocalAppFontFamily.current, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         )
@@ -600,7 +601,7 @@ fun NeteaseWebLoginScreen(
                                 is NeteaseLoginState.Loading -> stringResource(R.string.auth_saving)
                                 else -> stringResource(R.string.auth_done)
                             },
-                            fontFamily = GoogleSansRounded,
+                            fontFamily = LocalAppFontFamily.current,
                             fontWeight = FontWeight.SemiBold
                         )
                     }
@@ -632,7 +633,7 @@ fun NeteaseWebLoginScreen(
                     text = stringResource(R.string.auth_web_login_security_note_netease),
                     modifier = Modifier.padding(12.dp),
                     style = MaterialTheme.typography.bodySmall,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -663,7 +664,7 @@ fun NeteaseWebLoginScreen(
                             text = errorText,
                             modifier = Modifier.weight(1f),
                             style = MaterialTheme.typography.bodySmall,
-                            fontFamily = GoogleSansRounded,
+                            fontFamily = LocalAppFontFamily.current,
                             color = MaterialTheme.colorScheme.onErrorContainer
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -674,7 +675,7 @@ fun NeteaseWebLoginScreen(
                                 webView?.reload()
                             }
                         ) {
-                            Text(text = stringResource(R.string.auth_web_retry), fontFamily = GoogleSansRounded, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(text = stringResource(R.string.auth_web_retry), fontFamily = LocalAppFontFamily.current, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }
                 }

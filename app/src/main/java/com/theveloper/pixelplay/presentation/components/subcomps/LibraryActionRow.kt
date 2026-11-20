@@ -76,6 +76,7 @@ import androidx.compose.ui.unit.dp
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.model.MusicFolder
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import java.io.File
 import androidx.compose.ui.res.stringResource
 
@@ -509,7 +510,7 @@ fun Breadcrumbs(
                     text = name,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = if (isLast) FontWeight.Bold else FontWeight.Normal,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     color = if (isLast) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
                         .clip(CircleShape)

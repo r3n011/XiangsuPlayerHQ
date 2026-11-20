@@ -121,8 +121,8 @@ android {
         minSdk = 23
         targetSdk = 36
         multiDexEnabled = true
-        versionCode = 73
-        versionName = "1.8.1"
+        versionCode = 74
+        versionName = "1.8.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -389,6 +389,11 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.logging.interceptor)
     implementation(libs.zxing.core)
+    // TV 授权登录扫码（CameraX 预览 + ZXing 解码，不依赖 GMS）
+    implementation(libs.androidx.camera.core)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.view)
     // 低版本（API < 31）模糊：Blurry 对位图做真正的高斯模糊（RenderScript 兼容实现）
     implementation(libs.blurry)
     implementation(libs.gson)
@@ -447,12 +452,6 @@ dependencies {
         exclude(group = "androidx.compose.runtime")
         exclude(group = "androidx.compose.ui")
     }
-
-    // 友盟移动统计 U-App
-    // asms 是友盟全部业务 SDK 共用的公共基础组件，整个工程只声明一次（新增其它友盟产品时无需重复添加）
-    implementation(libs.umeng.asms)
-    // 统计业务 SDK：提供 UMConfigure 初始化与 MobclickAgent 埋点能力
-    implementation(libs.umeng.common)
 
     // Nothing Glyph Matrix SDK
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.aar"))))

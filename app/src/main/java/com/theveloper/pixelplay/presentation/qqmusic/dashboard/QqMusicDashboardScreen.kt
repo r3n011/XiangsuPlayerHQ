@@ -34,6 +34,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.theveloper.pixelplay.data.database.QqMusicPlaylistEntity
 import com.theveloper.pixelplay.presentation.components.SmartImage
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 import androidx.compose.ui.res.stringResource
 import com.theveloper.pixelplay.R
@@ -81,7 +82,7 @@ fun QqMusicDashboardScreen(
                 title = {
                     Text(
                         stringResource(R.string.screen_qq_music_dashboard_title),
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         fontWeight = FontWeight.Bold
                     )
                 },
@@ -154,7 +155,7 @@ fun QqMusicDashboardScreen(
                             Text(
                                 text = message,
                                 style = MaterialTheme.typography.bodyMedium,
-                                fontFamily = GoogleSansRounded
+                                fontFamily = LocalAppFontFamily.current
                             )
                         }
                     }
@@ -207,13 +208,13 @@ fun QqMusicDashboardScreen(
                             Text(
                                 text = nickname,
                                 style = MaterialTheme.typography.titleMedium,
-                                fontFamily = GoogleSansRounded,
+                                fontFamily = LocalAppFontFamily.current,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
                                 text = stringResource(R.string.dash_playlists_synced_count, playlists.size),
                                 style = MaterialTheme.typography.bodySmall,
-                                fontFamily = GoogleSansRounded,
+                                fontFamily = LocalAppFontFamily.current,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -234,7 +235,7 @@ fun QqMusicDashboardScreen(
                 Text(
                     text = stringResource(R.string.dash_title_playlists),
                     style = MaterialTheme.typography.titleMedium,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     fontWeight = FontWeight.Bold
                 )
                 if (playlists.isEmpty()) {
@@ -245,7 +246,7 @@ fun QqMusicDashboardScreen(
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(Modifier.width(4.dp))
-                        Text(stringResource(R.string.dash_action_sync), fontFamily = GoogleSansRounded, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(stringResource(R.string.dash_action_sync), fontFamily = LocalAppFontFamily.current, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
             }
@@ -269,14 +270,14 @@ fun QqMusicDashboardScreen(
                         Text(
                             text = stringResource(R.string.dash_playlists_empty_title),
                             style = MaterialTheme.typography.bodyLarge,
-                            fontFamily = GoogleSansRounded,
+                            fontFamily = LocalAppFontFamily.current,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(Modifier.height(8.dp))
                         Text(
                             text = stringResource(R.string.dash_playlists_empty_hint_subsonic),
                             style = MaterialTheme.typography.bodyMedium,
-                            fontFamily = GoogleSansRounded,
+                            fontFamily = LocalAppFontFamily.current,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                         )
                     }
@@ -325,7 +326,7 @@ fun QqMusicDashboardScreen(
                 ) {
                     Text(
                         text = stringResource(R.string.qq_select_playlist_type_title),
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.titleLarge
                     )
@@ -334,7 +335,7 @@ fun QqMusicDashboardScreen(
 
                     Text(
                         text = stringResource(R.string.qq_choose_playlists_to_sync),
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -367,13 +368,13 @@ fun QqMusicDashboardScreen(
                             Column {
                                 Text(
                                     text = stringResource(R.string.qq_all_playlists),
-                                    fontFamily = GoogleSansRounded,
+                                    fontFamily = LocalAppFontFamily.current,
                                     fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                                 Text(
                                     text = stringResource(R.string.qq_created_and_collected),
-                                    fontFamily = GoogleSansRounded,
+                                    fontFamily = LocalAppFontFamily.current,
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                                 )
@@ -406,7 +407,7 @@ fun QqMusicDashboardScreen(
                             Spacer(Modifier.width(12.dp))
                             Text(
                                 text = stringResource(R.string.qq_created_playlists),
-                                fontFamily = GoogleSansRounded,
+                                fontFamily = LocalAppFontFamily.current,
                                 fontWeight = FontWeight.Medium,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -438,7 +439,7 @@ fun QqMusicDashboardScreen(
                             Spacer(Modifier.width(12.dp))
                             Text(
                                 text = stringResource(R.string.qq_collected_playlists),
-                                fontFamily = GoogleSansRounded,
+                                fontFamily = LocalAppFontFamily.current,
                                 fontWeight = FontWeight.Medium,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -503,7 +504,7 @@ private fun QqPlaylistCard(
                 Text(
                     text = playlist.name,
                     style = MaterialTheme.typography.titleSmall,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -511,7 +512,7 @@ private fun QqPlaylistCard(
                 Text(
                     text = stringResource(R.string.dash_song_count, playlist.songCount),
                     style = MaterialTheme.typography.bodySmall,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }

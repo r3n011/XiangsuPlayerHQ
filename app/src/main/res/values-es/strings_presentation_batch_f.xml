@@ -155,6 +155,7 @@
     <string name="presentation_batch_f_telegram_edit_number_chip">Estás editando tu número. Enviar el código de nuevo reemplazará el anterior.</string>
     <string name="presentation_batch_f_working">Trabajando…</string>
     <string name="presentation_batch_f_telegram_status_initializing">Inicializando Telegram…</string>
+    <string name="presentation_batch_f_telegram_init_failed">"No se pudo inicializar TDLib. Las funciones de Telegram no están disponibles."</string>
     <string name="presentation_batch_f_telegram_status_logging_out">Cerrando sesión…</string>
     <string name="presentation_batch_f_telegram_status_closing">Cerrando sesión…</string>
     <string name="presentation_batch_f_telegram_status_closed">Sesión cerrada. Vuelve a abrir el inicio de sesión para continuar.</string>

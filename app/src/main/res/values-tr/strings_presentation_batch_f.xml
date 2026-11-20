@@ -167,7 +167,8 @@
     <string name="presentation_batch_f_telegram_login_title">Telegram Girişi</string>
     <string name="presentation_batch_f_telegram_edit_number_chip">Numaranızı düzenliyorsunuz. Kodu tekrar göndermek öncekinin yerine geçecektir.</string>
     <string name="presentation_batch_f_working">Çalışılıyor…</string>
-    <string name="presentation_batch_f_telegram_status_initializing">Telegram başlatılıyor…</string>
+        <string name="presentation_batch_f_telegram_init_failed">"TDLib başlatılamadı. Telegram özellikleri kullanılamıyor."</string>
+<string name="presentation_batch_f_telegram_status_initializing">Telegram başlatılıyor…</string>
     <string name="presentation_batch_f_telegram_status_logging_out">Oturum kapatılıyor…</string>
     <string name="presentation_batch_f_telegram_status_closing">Oturum sonlandırılıyor…</string>
     <string name="presentation_batch_f_telegram_status_closed">Oturum kapatıldı. Devam etmek için girişi tekrar açın.</string>

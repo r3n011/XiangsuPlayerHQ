@@ -67,6 +67,7 @@ import java.net.URLEncoder
 import timber.log.Timber
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -304,7 +305,7 @@ private fun EditSongContent(
                     Text(
                         modifier = Modifier.padding(start = 10.dp),
                         text = stringResource(R.string.edit_song_toolbar_title),
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         style = MaterialTheme.typography.displaySmall
                     )
                 },

@@ -162,7 +162,8 @@
     <string name="presentation_batch_f_telegram_login_title">Вход в Telegram</string>
     <string name="presentation_batch_f_telegram_edit_number_chip">Вы редактируете номер. Повторная отправка кода заменит предыдущий.</string>
     <string name="presentation_batch_f_working">Работаем…</string>
-    <string name="presentation_batch_f_telegram_status_initializing">Инициализация Telegram…</string>
+        <string name="presentation_batch_f_telegram_init_failed">"Не удалось инициализировать TDLib. Функции Telegram недоступны."</string>
+<string name="presentation_batch_f_telegram_status_initializing">Инициализация Telegram…</string>
     <string name="presentation_batch_f_telegram_status_logging_out">Выход из системы…</string>
     <string name="presentation_batch_f_telegram_status_closing">Закрытие сессии…</string>
     <string name="presentation_batch_f_telegram_status_closed">Сессия закрыта. Откройте вход снова.</string>

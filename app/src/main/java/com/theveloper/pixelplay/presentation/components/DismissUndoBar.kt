@@ -32,6 +32,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 import androidx.compose.ui.text.style.TextOverflow
 
@@ -74,7 +75,7 @@ fun DismissUndoBar(
                     text = stringResource(R.string.playlist_dismissed_message),
                     style = MaterialTheme.typography.titleSmall
                         .copy(
-                            fontFamily = GoogleSansRounded
+                            fontFamily = LocalAppFontFamily.current
                         ),
                     color = MaterialTheme.colorScheme.onSurface
                 )

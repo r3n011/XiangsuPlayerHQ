@@ -42,6 +42,7 @@ import com.theveloper.pixelplay.data.model.Artist
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.presentation.components.SmartImage
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 
 private data class PlayerArtistShortcutItem(
@@ -110,7 +111,7 @@ internal fun PlayerArtistPickerBottomSheet(
             Text(
                 text = stringResource(R.string.artist_picker_title),
                 style = MaterialTheme.typography.headlineMedium,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 fontWeight = FontWeight.Bold,
                 color = colorScheme.onSurface
             )
@@ -216,7 +217,7 @@ private fun PlayerArtistShortcutCard(
                 Text(
                     text = artist.name,
                     style = MaterialTheme.typography.titleMedium,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     fontWeight = FontWeight.SemiBold,
                     color = contentColor,
                     maxLines = 1,

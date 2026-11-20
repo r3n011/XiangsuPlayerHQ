@@ -48,6 +48,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import com.theveloper.pixelplay.ui.theme.PixelPlayStatusBarStyle
 import androidx.compose.ui.res.stringResource
 import com.theveloper.pixelplay.MainActivity
@@ -78,7 +79,7 @@ fun GenreGradientTopBar(
                 modifier = Modifier.padding(start = 6.dp),
                 text = title,
                 color = contentColor,
-                fontFamily = GoogleSansRounded
+                fontFamily = LocalAppFontFamily.current
             )
         },
         expandedHeight = 160.dp,

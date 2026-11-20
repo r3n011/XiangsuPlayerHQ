@@ -474,7 +474,15 @@ fun LyricsMoreBottomSheet(
                     val customFonts = remember(customFontsRefreshTick, currentFontFamily) {
                         listCustomFonts(sheetContext).map { "$CUSTOM_FONT_PREFIX$it" }
                     }
-                    val predefinedFonts = LyricsFontDisplayNames.keys.toList()
+                    // ⚡ 可下载字体（站酷系/得意黑等）的下载入口已迁移到「外观 → 应用字体 → 字体市场」；
+                    //   歌词选择器只保留已下载的（含当前选中但尚未下载完成的 key，避免选中项凭空消失）。
+                    val predefinedFonts = LyricsFontDisplayNames.keys
+                        .filter { key ->
+                            key == lyricsFontFamily ||
+                                !isDownloadableFontKey(key) ||
+                                isDownloadableFontDownloaded(sheetContext, key)
+                        }
+                        .toList()
                     val allFontFamilies = predefinedFonts + customFonts
 
                     val downloadScope = rememberCoroutineScope()

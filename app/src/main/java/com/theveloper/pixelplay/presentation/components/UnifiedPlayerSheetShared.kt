@@ -66,6 +66,7 @@ import androidx.compose.ui.unit.sp
 import coil.size.Size
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 
 internal val LocalMaterialTheme = compositionLocalOf<ColorScheme> { error("No ColorScheme provided") }
 
@@ -263,13 +264,13 @@ internal fun MiniPlayerContentInternal(
                         fontSize = if (isExpressiveStyle) 16.sp else 15.sp,
                         fontWeight = if (isExpressiveStyle) FontWeight.Bold else FontWeight.SemiBold,
                         letterSpacing = (-0.2).sp,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         color = onPrimaryContainer
                     )
                     val artistStyle = MaterialTheme.typography.bodySmall.copy(
                         fontSize = 13.sp,
                         letterSpacing = 0.sp,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         color = onPrimaryContainer.copy(alpha = 0.7f)
                     )
 

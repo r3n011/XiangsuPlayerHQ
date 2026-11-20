@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 
 /**
@@ -114,7 +115,7 @@ fun PixelAlertDialog(
                             // 统一标题：GoogleSansRounded 粗体，和「全新安装」弹窗一致
                             ProvideTextStyle(
                                 MaterialTheme.typography.titleLarge.copy(
-                                    fontFamily = GoogleSansRounded,
+                                    fontFamily = LocalAppFontFamily.current,
                                     fontWeight = FontWeight.Bold,
                                 )
                             ) {

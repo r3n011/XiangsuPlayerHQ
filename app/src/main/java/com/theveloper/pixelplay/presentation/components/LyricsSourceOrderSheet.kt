@@ -52,6 +52,7 @@ import com.theveloper.pixelplay.data.preferences.LyricsSourceKey
 import com.theveloper.pixelplay.presentation.utils.LocalAppHapticsConfig
 import com.theveloper.pixelplay.presentation.utils.performAppCompatHapticFeedback
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import sh.calvin.reorderable.ReorderableItem
@@ -140,7 +141,7 @@ fun LyricsSourceOrderSheet(
                     Text(
                         stringResource(R.string.setcat_api_lyrics_priority_label),
                         style = MaterialTheme.typography.displaySmall,
-                        fontFamily = GoogleSansRounded
+                        fontFamily = LocalAppFontFamily.current
                     )
                 }
             },
@@ -213,7 +214,7 @@ fun LyricsSourceOrderSheet(
                                         Text(
                                             text = "${index + 1}. ${key.displayName}",
                                             style = MaterialTheme.typography.bodyLarge,
-                                            fontFamily = GoogleSansRounded,
+                                            fontFamily = LocalAppFontFamily.current,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
                                         )

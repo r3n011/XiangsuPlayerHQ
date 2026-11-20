@@ -168,6 +168,7 @@
     <string name="presentation_batch_f_telegram_edit_number_chip">You are editing your number. Sending code again will replace the previous one.</string>
     <string name="presentation_batch_f_working">Working…</string>
     <string name="presentation_batch_f_telegram_status_initializing">Initializing Telegram…</string>
+    <string name="presentation_batch_f_telegram_init_failed">"TDLib failed to initialize. Telegram features are unavailable."</string>
     <string name="presentation_batch_f_telegram_status_logging_out">Logging out…</string>
     <string name="presentation_batch_f_telegram_status_closing">Closing session…</string>
     <string name="presentation_batch_f_telegram_status_closed">Session closed. Re-open login to continue.</string>

@@ -535,6 +535,7 @@
     <string name="ui_not_enough_microphone_audio_received">"没有收到足够的麦克风音频"</string>
     <string name="ui_not_signed_in">"未登录"</string>
     <string name="ui_not_tested">"未测试"</string>
+    <string name="ui_not_supported_yet">"暂不支持"</string>
     <string name="ui_now_playing">"当前播放"</string>
     <string name="ui_now_playing_4c0a5b8">"正在播放歌曲：%1$s"</string>
     <string name="ui_official_api_returned_code">"官方接口返回 code=%1$s"</string>

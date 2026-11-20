@@ -27,6 +27,7 @@ import com.theveloper.pixelplay.data.model.LibraryTabId
 import com.theveloper.pixelplay.data.model.StorageFilter
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 
 private data class LibraryEmptySpec(
     val iconRes: Int,
@@ -180,7 +181,7 @@ internal fun LibraryExpressiveEmptyState(
                 Text(
                     text = stringResource(spec.titleRes),
                     style = MaterialTheme.typography.titleLarge,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     fontWeight = FontWeight.SemiBold,
                     textAlign = TextAlign.Center
                 )

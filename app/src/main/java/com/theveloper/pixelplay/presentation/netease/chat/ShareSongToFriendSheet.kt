@@ -41,6 +41,7 @@ import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.netease.chat.ChatContact
 import com.theveloper.pixelplay.data.netease.chat.NeteaseChatRepository
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.channels.BufferOverflow
@@ -151,13 +152,13 @@ fun ShareSongToFriendSheet(
                     Text(
                         text = stringResource(R.string.player_share_to_friend_title),
                         style = MaterialTheme.typography.titleLarge,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
                         text = songTitle,
                         style = MaterialTheme.typography.bodySmall,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -185,7 +186,7 @@ fun ShareSongToFriendSheet(
                     Text(
                         text = stringResource(R.string.chat_empty_friends),
                         style = MaterialTheme.typography.bodyMedium,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
                     )
@@ -209,7 +210,7 @@ fun ShareSongToFriendSheet(
                             Text(
                                 text = contact.nickname,
                                 style = MaterialTheme.typography.bodyLarge,
-                                fontFamily = GoogleSansRounded,
+                                fontFamily = LocalAppFontFamily.current,
                                 modifier = Modifier.weight(1f),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
@@ -221,12 +222,12 @@ fun ShareSongToFriendSheet(
                                 when {
                                     contact.userId in sent -> Text(
                                         text = stringResource(R.string.player_share_to_friend_sent),
-                                        fontFamily = GoogleSansRounded
+                                        fontFamily = LocalAppFontFamily.current
                                     )
 
                                     else -> Text(
                                         text = stringResource(R.string.action_share),
-                                        fontFamily = GoogleSansRounded
+                                        fontFamily = LocalAppFontFamily.current
                                     )
                                 }
                             }

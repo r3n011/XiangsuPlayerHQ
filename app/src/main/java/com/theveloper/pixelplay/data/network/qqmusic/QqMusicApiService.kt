@@ -58,6 +58,9 @@ class QqMusicApiService @Inject constructor(
             !persistedCookies["qm_keyst"].isNullOrBlank()
     }
 
+    /** 导出当前登录 Cookie，供「授权电视登录」使用。 */
+    fun getCookieMap(): Map<String, String> = persistedCookies.toMap()
+
     fun setPersistedCookies(cookies: Map<String, String>) {
         persistedCookies = cookies.toMap()
         logCookieKeyDiagnostics("setPersistedCookies")

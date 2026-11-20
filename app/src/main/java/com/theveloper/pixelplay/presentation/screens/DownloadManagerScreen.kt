@@ -62,6 +62,7 @@ import com.theveloper.pixelplay.data.service.http.MusicDownloadService
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 
 /**
  * 下载管理：队列/进行中/已暂停/失败/已完成的下载任务列表，支持暂停、继续、取消与清理已完成记录。
@@ -98,7 +99,7 @@ fun DownloadManagerScreen(
                 title = {
                     Text(
                         text = stringResource(R.string.download_manager_title),
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1
                     )
@@ -150,7 +151,7 @@ fun DownloadManagerScreen(
                 Text(
                     text = stringResource(R.string.download_manager_empty),
                     style = MaterialTheme.typography.bodyMedium,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -216,7 +217,7 @@ private fun DownloadTaskCard(
                     Text(
                         text = info.title,
                         style = MaterialTheme.typography.titleMedium,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -224,7 +225,7 @@ private fun DownloadTaskCard(
                     Text(
                         text = info.artist,
                         style = MaterialTheme.typography.bodySmall,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -293,7 +294,7 @@ private fun DownloadTaskCard(
             Text(
                 text = info.fileName?.let { "$statusText · $it" } ?: statusText,
                 style = MaterialTheme.typography.labelMedium,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis

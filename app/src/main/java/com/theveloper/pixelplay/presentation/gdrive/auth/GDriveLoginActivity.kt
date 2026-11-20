@@ -39,6 +39,7 @@ import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.theveloper.pixelplay.data.gdrive.GDriveConstants
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import com.theveloper.pixelplay.ui.theme.PixelPlayTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -109,7 +110,7 @@ fun GDriveLoginScreen(
                         Spacer(Modifier.width(8.dp))
                         Text(
                             stringResource(R.string.auth_gdrive_title),
-                            fontFamily = GoogleSansRounded,
+                            fontFamily = LocalAppFontFamily.current,
                             fontWeight = FontWeight.SemiBold
                         )
                     }
@@ -160,7 +161,7 @@ fun GDriveLoginScreen(
                             Spacer(Modifier.height(16.dp))
                             Text(
                                 stringResource(R.string.auth_gdrive_setting_up),
-                                fontFamily = GoogleSansRounded,
+                                fontFamily = LocalAppFontFamily.current,
                                 style = MaterialTheme.typography.bodyLarge
                             )
                         }
@@ -234,7 +235,7 @@ private fun SignInContent(
         Text(
             stringResource(R.string.auth_gdrive_connect_title),
             style = MaterialTheme.typography.headlineSmall,
-            fontFamily = GoogleSansRounded,
+            fontFamily = LocalAppFontFamily.current,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center
         )
@@ -244,7 +245,7 @@ private fun SignInContent(
         Text(
             stringResource(R.string.auth_gdrive_connect_subtitle),
             style = MaterialTheme.typography.bodyMedium,
-            fontFamily = GoogleSansRounded,
+            fontFamily = LocalAppFontFamily.current,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
@@ -264,7 +265,7 @@ private fun SignInContent(
         ) {
             Text(
                 stringResource(R.string.auth_gdrive_sign_in_with_google),
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 fontWeight = FontWeight.SemiBold,
                 style = MaterialTheme.typography.titleMedium
             )
@@ -282,7 +283,7 @@ private fun SignInContent(
                     text = errorMessage,
                     modifier = Modifier.padding(16.dp),
                     style = MaterialTheme.typography.bodyMedium,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     color = MaterialTheme.colorScheme.onErrorContainer
                 )
             }
@@ -306,7 +307,7 @@ private fun FolderSetupContent(
         Text(
             text = stringResource(R.string.auth_gdrive_select_music_folder_title),
             style = MaterialTheme.typography.titleMedium,
-            fontFamily = GoogleSansRounded,
+            fontFamily = LocalAppFontFamily.current,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
         )
@@ -314,7 +315,7 @@ private fun FolderSetupContent(
         Text(
             text = stringResource(R.string.auth_gdrive_select_music_folder_subtitle),
             style = MaterialTheme.typography.bodySmall,
-            fontFamily = GoogleSansRounded,
+            fontFamily = LocalAppFontFamily.current,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 24.dp)
         )
@@ -344,7 +345,7 @@ private fun FolderSetupContent(
                     Text(
                         text = crumb.name,
                         style = MaterialTheme.typography.bodyMedium,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         fontWeight = if (index == state.currentPath.lastIndex) FontWeight.Bold else FontWeight.Normal,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -383,14 +384,14 @@ private fun FolderSetupContent(
                     Text(
                         text = stringResource(R.string.auth_gdrive_create_pixelplay_music_title),
                         style = MaterialTheme.typography.titleSmall,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                     Text(
                         text = stringResource(R.string.auth_gdrive_create_folder_here_hint),
                         style = MaterialTheme.typography.bodySmall,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
                     )
                 }
@@ -423,7 +424,7 @@ private fun FolderSetupContent(
                 Text(
                     text = stringResource(R.string.auth_gdrive_no_folders_here),
                     style = MaterialTheme.typography.bodyLarge,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                 )
             }
@@ -490,7 +491,7 @@ private fun FolderCard(
             Text(
                 text = folder.name,
                 style = MaterialTheme.typography.titleSmall,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -508,7 +509,7 @@ private fun FolderCard(
             ) {
                 Text(
                     stringResource(R.string.auth_gdrive_use_this_folder),
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     fontWeight = FontWeight.SemiBold,
                     style = MaterialTheme.typography.labelMedium
                 )

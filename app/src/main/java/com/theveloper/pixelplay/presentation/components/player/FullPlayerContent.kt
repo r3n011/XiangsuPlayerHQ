@@ -241,6 +241,7 @@ import com.theveloper.pixelplay.data.preferences.TabletPlayerLayout
 import com.theveloper.pixelplay.data.preferences.PlayerStyle
 import com.theveloper.pixelplay.data.service.visualizer.WaveformPeaks
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import com.theveloper.pixelplay.utils.AudioMetaUtils.mimeTypeToFormat
 import com.theveloper.pixelplay.utils.LyricsImportFailureReason
 import com.theveloper.pixelplay.utils.LyricsImportSecurity
@@ -4546,7 +4547,7 @@ private fun PlayerSongInfo(
     }
     val titleStyle = MaterialTheme.typography.headlineSmall.copy(
         fontWeight = FontWeight.Bold,
-        fontFamily = GoogleSansRounded,
+        fontFamily = LocalAppFontFamily.current,
         color = textColor
     )
 

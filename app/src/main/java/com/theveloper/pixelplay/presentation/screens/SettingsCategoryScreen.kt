@@ -93,6 +93,7 @@ import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.OpenInNew
 import androidx.compose.material.icons.outlined.ClearAll
 import androidx.compose.material.icons.outlined.BlurOn
+import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Language
@@ -162,6 +163,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.IconButtonDefaults
@@ -276,8 +278,13 @@ import com.theveloper.pixelplay.presentation.viewmodel.SettingsViewModel
 import com.theveloper.pixelplay.MainActivity
 import com.theveloper.pixelplay.ui.theme.AppFontDisplayNames
 import com.theveloper.pixelplay.ui.theme.CUSTOM_FONT_PREFIX
+import com.theveloper.pixelplay.ui.theme.DOWNLOADABLE_APP_FONTS
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import com.theveloper.pixelplay.ui.theme.customFontDisplayName
+import com.theveloper.pixelplay.ui.theme.downloadAppFont
+import com.theveloper.pixelplay.ui.theme.importCustomFont
+import com.theveloper.pixelplay.ui.theme.isAppFontDownloaded
 import com.theveloper.pixelplay.ui.theme.listCustomFonts
 import dev.chrisbanes.haze.hazeSource
 
@@ -1051,7 +1058,7 @@ fun SettingsCategoryScreen(
                                             Text(
                                                 text = stringResource(R.string.setcat_api_lyrics_priority_label),
                                                 style = MaterialTheme.typography.titleSmall,
-                                                fontFamily = GoogleSansRounded
+                                                fontFamily = LocalAppFontFamily.current
                                             )
                                             Text(
                                                 text = apiState.lyricsSourceOrder.joinToString(" › ") { it.displayName },
@@ -1075,7 +1082,7 @@ fun SettingsCategoryScreen(
                                                 Text(
                                                     text = stringResource(R.string.setcat_api_lyrics_priority_action),
                                                     style = MaterialTheme.typography.labelMedium,
-                                                    fontFamily = GoogleSansRounded,
+                                                    fontFamily = LocalAppFontFamily.current,
                                                     color = MaterialTheme.colorScheme.onSecondaryContainer
                                                 )
                                                 Icon(
@@ -1240,12 +1247,36 @@ fun SettingsCategoryScreen(
                                 )
 
                                 // ⚡ 应用字体：只作用于歌词之外的软件界面（歌词字体在「播放器与歌词外观」里单独设置）。
-                                //   选项 = 内置字体 + 已导入的自定义字体（与歌词字体共用 filesDir/fonts/ 存储）。
-                                val appFontOptions = remember(context) {
-                                    AppFontDisplayNames + listCustomFonts(context).associate { fileName ->
-                                        val key = CUSTOM_FONT_PREFIX + fileName
-                                        key to customFontDisplayName(key)
+                                //   选项 = 内置字体 + 字体市场已下载字体 + 已导入的自定义字体（与歌词字体共用 filesDir/fonts/ 存储）。
+                                var appFontCustomsVersion by remember { mutableStateOf(0) }
+                                val appFontScope = rememberCoroutineScope()
+                                val appFontDownloadProgress = remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
+                                val appFontImportLauncher = rememberLauncherForActivityResult(
+                                    contract = ActivityResultContracts.GetContent()
+                                ) { uri ->
+                                    if (uri != null) {
+                                        val importedKey = importCustomFont(context, uri)
+                                        if (importedKey != null) {
+                                            appFontCustomsVersion++
+                                            settingsViewModel.setAppFontFamily(importedKey)
+                                        } else {
+                                            android.widget.Toast.makeText(
+                                                context,
+                                                R.string.setcat_app_font_import_invalid,
+                                                android.widget.Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
                                     }
+                                }
+                                val appFontOptions = remember(context, appFontCustomsVersion) {
+                                    AppFontDisplayNames +
+                                        DOWNLOADABLE_APP_FONTS
+                                            .filter { isAppFontDownloaded(context, it.key) }
+                                            .associate { it.key to it.displayName } +
+                                        listCustomFonts(context).associate { fileName ->
+                                            val key = CUSTOM_FONT_PREFIX + fileName
+                                            key to customFontDisplayName(key)
+                                        }
                                 }
                                 ThemeSelectorItem(
                                     label = stringResource(R.string.setcat_app_font_label),
@@ -1255,6 +1286,80 @@ fun SettingsCategoryScreen(
                                     onSelectionChanged = { settingsViewModel.setAppFontFamily(it) },
                                     leadingIcon = { Icon(Icons.Outlined.TextFields, null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
+
+                                // ⚡ 导入自定义字体：系统文件选择器选 .ttf/.otf，复制进 filesDir/fonts/ 并立即启用
+                                SettingsItem(
+                                    title = stringResource(R.string.setcat_app_font_import),
+                                    subtitle = stringResource(R.string.setcat_app_font_import_desc),
+                                    leadingIcon = { Icon(Icons.Outlined.FileUpload, null, tint = MaterialTheme.colorScheme.secondary) },
+                                    onClick = { appFontImportLauncher.launch("*/*") }
+                                )
+
+                                // ⚡ 字体市场：开源 / 免费商用字体按需下载（源仓库 zispace/hanzi-fonts）
+                                val pendingMarketFonts = DOWNLOADABLE_APP_FONTS.filter { !isAppFontDownloaded(context, it.key) }
+                                if (pendingMarketFonts.isNotEmpty()) {
+                                    Spacer(Modifier.height(12.dp))
+                                    Text(
+                                        text = stringResource(R.string.setcat_app_font_market_title),
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontFamily = LocalAppFontFamily.current,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(horizontal = 4.dp)
+                                    )
+                                    pendingMarketFonts.forEach { marketFont ->
+                                        val progress = appFontDownloadProgress.value[marketFont.key]
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(horizontal = 4.dp, vertical = 2.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Column(Modifier.weight(1f)) {
+                                                Text(
+                                                    text = marketFont.displayName,
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    fontFamily = LocalAppFontFamily.current,
+                                                    color = MaterialTheme.colorScheme.onSurface
+                                                )
+                                                when {
+                                                    progress == null -> {}
+                                                    progress == -1 -> Text(
+                                                        text = stringResource(R.string.setcat_app_font_download_failed),
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        fontFamily = LocalAppFontFamily.current,
+                                                        color = MaterialTheme.colorScheme.error
+                                                    )
+                                                    else -> LinearProgressIndicator(
+                                                        progress = { progress / 100f },
+                                                        modifier = Modifier.fillMaxWidth()
+                                                    )
+                                                }
+                                            }
+                                            TextButton(
+                                                enabled = progress == null,
+                                                onClick = {
+                                                    appFontScope.launch {
+                                                        appFontDownloadProgress.value =
+                                                            appFontDownloadProgress.value + (marketFont.key to 0)
+                                                        val ok = downloadAppFont(context, marketFont.key) { percent ->
+                                                            appFontDownloadProgress.value =
+                                                                appFontDownloadProgress.value + (marketFont.key to percent)
+                                                        }
+                                                        appFontDownloadProgress.value =
+                                                            appFontDownloadProgress.value + (marketFont.key to if (ok) 100 else -1)
+                                                        if (ok) appFontCustomsVersion++
+                                                        // 下载完成后进度条停留 100%，1.2s 后清除该行（字体已进入上方选择器）
+                                                        kotlinx.coroutines.delay(1200)
+                                                        appFontDownloadProgress.value =
+                                                            appFontDownloadProgress.value - marketFont.key
+                                                    }
+                                                }
+                                            ) {
+                                                Text(stringResource(R.string.setcat_app_font_download))
+                                            }
+                                        }
+                                    }
+                                }
 
                                 SwitchSettingItem(
                                     title = stringResource(R.string.setcat_custom_palette_enabled_title),
@@ -2057,7 +2162,7 @@ fun SettingsCategoryScreen(
                                     title = {
                                         Text(
                                             text = stringResource(R.string.setcat_lanzou_test_dialog_title),
-                                            fontFamily = GoogleSansRounded
+                                            fontFamily = LocalAppFontFamily.current
                                         )
                                     },
                                     text = {
@@ -2074,7 +2179,7 @@ fun SettingsCategoryScreen(
                                         TextButton(onClick = { lanzouTestReport = null }) {
                                             Text(
                                                 text = stringResource(R.string.setcat_lanzou_test_close),
-                                                fontFamily = GoogleSansRounded
+                                                fontFamily = LocalAppFontFamily.current
                                             )
                                         }
                                     },
@@ -2102,7 +2207,7 @@ fun SettingsCategoryScreen(
                                             }) {
                                                 Text(
                                                     text = stringResource(R.string.setcat_lanzou_test_open_browser),
-                                                    fontFamily = GoogleSansRounded
+                                                    fontFamily = LocalAppFontFamily.current
                                                 )
                                             }
                                         }
@@ -3133,7 +3238,7 @@ private fun BackupSectionSelectionDialog(
                                             fontSize = 24.sp,
                                             textGeometricTransform = TextGeometricTransform(scaleX = 1.2f),
                                         ),
-                                        fontFamily = GoogleSansRounded,
+                                        fontFamily = LocalAppFontFamily.current,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
@@ -3408,7 +3513,7 @@ private fun BackupSectionSelectableCard(
                     Text(
                         text = section.label,
                         style = MaterialTheme.typography.titleMedium.copy(
-                            fontFamily = GoogleSansRounded
+                            fontFamily = LocalAppFontFamily.current
                         ),
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
@@ -3679,7 +3784,7 @@ private fun ImportFileSelectionDialog(
                                             fontSize = 24.sp,
                                             textGeometricTransform = TextGeometricTransform(scaleX = 1.2f),
                                         ),
-                                        fontFamily = GoogleSansRounded,
+                                        fontFamily = LocalAppFontFamily.current,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
@@ -3958,7 +4063,7 @@ private fun BackupHistoryCard(
                     Text(
                         text = entry.displayName,
                         style = MaterialTheme.typography.titleSmall.copy(
-                            fontFamily = GoogleSansRounded
+                            fontFamily = LocalAppFontFamily.current
                         ),
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,

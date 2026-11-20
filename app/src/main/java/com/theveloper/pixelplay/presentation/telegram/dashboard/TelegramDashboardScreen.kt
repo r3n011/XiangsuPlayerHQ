@@ -97,6 +97,7 @@ import com.theveloper.pixelplay.data.database.TelegramTopicEntity
 import com.theveloper.pixelplay.presentation.components.CollapsibleCommonTopBar
 import com.theveloper.pixelplay.presentation.components.NoInternetScreen
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import java.io.File
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
@@ -278,7 +279,7 @@ fun TelegramDashboardScreen(
                 text = {
                     Text(
                         stringResource(R.string.presentation_batch_f_add_channel_fab),
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         fontWeight = FontWeight.SemiBold
                     )
                 },
@@ -334,7 +335,7 @@ fun TelegramDashboardScreen(
                 title = {
                     Text(
                         text = stringResource(R.string.presentation_batch_f_remove_channel_confirm_title),
-                        fontFamily = GoogleSansRounded
+                        fontFamily = LocalAppFontFamily.current
                     )
                 },
                 text = {
@@ -343,7 +344,7 @@ fun TelegramDashboardScreen(
                             R.string.presentation_batch_f_remove_channel_confirm_body,
                             channelLabel
                         ),
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         textAlign = TextAlign.Center
                     )
                 },
@@ -354,7 +355,7 @@ fun TelegramDashboardScreen(
                     }) {
                         Text(
                             text = stringResource(R.string.presentation_batch_f_remove_channel_confirm_action),
-                            fontFamily = GoogleSansRounded,
+                            fontFamily = LocalAppFontFamily.current,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.error
                         )
@@ -364,7 +365,7 @@ fun TelegramDashboardScreen(
                     TextButton(onClick = { channelPendingRemoval = null }) {
                         Text(
                             text = stringResource(R.string.cancel),
-                            fontFamily = GoogleSansRounded
+                            fontFamily = LocalAppFontFamily.current
                         )
                     }
                 }
@@ -453,7 +454,7 @@ private fun ExpressiveChannelItem(
                         Text(
                             text = channel.title.take(1).uppercase(),
                             style = MaterialTheme.typography.headlineSmall,
-                            fontFamily = GoogleSansRounded,
+                            fontFamily = LocalAppFontFamily.current,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onPrimary
                         )
@@ -469,7 +470,7 @@ private fun ExpressiveChannelItem(
                     Text(
                         text = channel.title,
                         style = MaterialTheme.typography.titleLarge,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 2,
@@ -478,7 +479,7 @@ private fun ExpressiveChannelItem(
                     Text(
                         text = usernameLabel ?: publicChannelFallback,
                         style = MaterialTheme.typography.bodyMedium,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -601,7 +602,7 @@ private fun ExpressiveChannelItem(
                     Text(
                         text = stringResource(R.string.presentation_batch_f_topics_heading),
                         style = MaterialTheme.typography.labelMedium,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(bottom = 6.dp)
@@ -655,7 +656,7 @@ private fun TopicRow(topic: TelegramTopicEntity) {
             Text(
                 text = topic.name,
                 style = MaterialTheme.typography.bodyMedium,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
@@ -664,7 +665,7 @@ private fun TopicRow(topic: TelegramTopicEntity) {
             Text(
                 text = songsLabel,
                 style = MaterialTheme.typography.labelSmall,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
@@ -672,14 +673,14 @@ private fun TopicRow(topic: TelegramTopicEntity) {
 //                Text(
 //                    text = "${topic.songCount} songs",
 //                    style = MaterialTheme.typography.labelSmall,
-//                    fontFamily = GoogleSansRounded,
+//                    fontFamily = LocalAppFontFamily.current,
 //                    color = MaterialTheme.colorScheme.onSurfaceVariant
 //                )
 //            } else {
 //                Text(
 //                    text = "Sync to load songs",
 //                    style = MaterialTheme.typography.labelSmall,
-//                    fontFamily = GoogleSansRounded,
+//                    fontFamily = LocalAppFontFamily.current,
 //                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
 //                )
 //            }
@@ -726,7 +727,7 @@ private fun ChannelActionsBottomSheet(
             Text(
                 text = channel.title,
                 style = MaterialTheme.typography.titleLarge,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 2,
@@ -736,7 +737,7 @@ private fun ChannelActionsBottomSheet(
             Text(
                 text = usernameLabel ?: publicChannelFallback,
                 style = MaterialTheme.typography.bodyMedium,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -846,14 +847,14 @@ private fun ChannelActionCard(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     fontWeight = FontWeight.SemiBold,
                     color = contentColor
                 )
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     color = contentColor.copy(alpha = 0.86f),
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
@@ -896,7 +897,7 @@ private fun ChannelMetaPill(
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelLarge,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -933,7 +934,7 @@ private fun ExpressiveEmptyState(
         Text(
             text = stringResource(R.string.presentation_batch_f_no_channels_synced),
             style = MaterialTheme.typography.headlineSmall,
-            fontFamily = GoogleSansRounded,
+            fontFamily = LocalAppFontFamily.current,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
         )
@@ -943,7 +944,7 @@ private fun ExpressiveEmptyState(
         Text(
             text = stringResource(R.string.presentation_batch_f_no_channels_body),
             style = MaterialTheme.typography.bodyLarge,
-            fontFamily = GoogleSansRounded,
+            fontFamily = LocalAppFontFamily.current,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

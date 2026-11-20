@@ -49,6 +49,7 @@ import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.presentation.utils.LocalAppHapticsConfig
 import com.theveloper.pixelplay.presentation.utils.performAppCompatHapticFeedback
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import kotlinx.coroutines.launch
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
@@ -117,7 +118,7 @@ fun LibraryReorderSheet(
                     Text(
                         text = title,
                         style = MaterialTheme.typography.headlineMedium,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                     )
                 }

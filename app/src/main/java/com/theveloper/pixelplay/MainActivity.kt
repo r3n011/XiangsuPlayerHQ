@@ -50,6 +50,7 @@ import androidx.compose.animation.core.EaseOutCubic
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import com.theveloper.pixelplay.data.preferences.StartupAnimationStyle
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import com.theveloper.pixelplay.utils.StartupTiming
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -3179,7 +3180,7 @@ private fun StartupBrandSplash() {
             text = "XiangsuPlayer",
             color = MaterialTheme.colorScheme.onBackground,
             fontSize = 32.sp,
-            fontFamily = GoogleSansRounded,
+            fontFamily = LocalAppFontFamily.current,
             fontWeight = FontWeight.Bold,
             // 只在绘制阶段读动画值，避免逐帧重组
             modifier = Modifier.graphicsLayer {

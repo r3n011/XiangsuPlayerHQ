@@ -54,6 +54,7 @@ import com.theveloper.pixelplay.data.kugou.KugouAudiobookAlbum
 import com.theveloper.pixelplay.presentation.components.CollapsibleCommonTopBar
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
@@ -150,7 +151,7 @@ fun AudiobookLibraryScreen(
                                     label = {
                                         Text(
                                             stringResource(R.string.audiobook_filter_all),
-                                            fontFamily = GoogleSansRounded,
+                                            fontFamily = LocalAppFontFamily.current,
                                         )
                                     },
                                 )
@@ -159,7 +160,7 @@ fun AudiobookLibraryScreen(
                                 FilterChip(
                                     selected = library.tagId == tag.id,
                                     onClick = { changeFilter { viewModel.setLibraryTag(tag.id) } },
-                                    label = { Text(tag.name, fontFamily = GoogleSansRounded) },
+                                    label = { Text(tag.name, fontFamily = LocalAppFontFamily.current) },
                                 )
                             }
                         }
@@ -286,7 +287,7 @@ private fun FilterDropdown(
                 Text(
                     text = "$label · $currentLabel",
                     style = MaterialTheme.typography.labelMedium,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -310,7 +311,7 @@ private fun FilterDropdown(
                     text = {
                         Text(
                             text = text,
-                            fontFamily = GoogleSansRounded,
+                            fontFamily = LocalAppFontFamily.current,
                             fontWeight = if (value == selected) FontWeight.Bold else FontWeight.Normal,
                         )
                     },

@@ -67,6 +67,7 @@ import com.theveloper.pixelplay.data.model.Playlist
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
 import com.theveloper.pixelplay.presentation.components.SmartImage
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 
 /**
@@ -96,7 +97,7 @@ fun KugouDashboardScreen(
                 title = {
                     Text(
                         text = stringResource(R.string.kugou_service_name),
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         fontWeight = FontWeight.Bold
                     )
                 },
@@ -180,7 +181,7 @@ fun KugouDashboardScreen(
                         },
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                         style = MaterialTheme.typography.bodyMedium,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         color = if (failed) {
                             MaterialTheme.colorScheme.onErrorContainer
                         } else {
@@ -258,7 +259,7 @@ fun KugouDashboardScreen(
                                 text = nickname?.takeIf { it.isNotBlank() }
                                     ?: stringResource(R.string.kugou_service_name),
                                 style = MaterialTheme.typography.titleMedium,
-                                fontFamily = GoogleSansRounded,
+                                fontFamily = LocalAppFontFamily.current,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
@@ -266,14 +267,14 @@ fun KugouDashboardScreen(
                             Text(
                                 text = stringResource(R.string.dash_playlists_synced_count, playlists.size),
                                 style = MaterialTheme.typography.bodySmall,
-                                fontFamily = GoogleSansRounded,
+                                fontFamily = LocalAppFontFamily.current,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             viewModel.userId?.let { id ->
                                 Text(
                                     text = stringResource(R.string.kugou_dashboard_account_id, id),
                                     style = MaterialTheme.typography.bodySmall,
-                                    fontFamily = GoogleSansRounded,
+                                    fontFamily = LocalAppFontFamily.current,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
@@ -305,7 +306,7 @@ fun KugouDashboardScreen(
                         Text(
                             text = stringResource(R.string.kugou_dashboard_quality_hint),
                             style = MaterialTheme.typography.bodySmall,
-                            fontFamily = GoogleSansRounded,
+                            fontFamily = LocalAppFontFamily.current,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -329,7 +330,7 @@ fun KugouDashboardScreen(
                         } else {
                             stringResource(R.string.dash_action_sync)
                         },
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -353,14 +354,14 @@ fun KugouDashboardScreen(
                             Text(
                                 text = stringResource(R.string.dash_playlists_empty_title),
                                 style = MaterialTheme.typography.bodyLarge,
-                                fontFamily = GoogleSansRounded,
+                                fontFamily = LocalAppFontFamily.current,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Spacer(Modifier.height(8.dp))
                             Text(
                                 text = stringResource(R.string.dash_playlists_empty_hint_subsonic),
                                 style = MaterialTheme.typography.bodyMedium,
-                                fontFamily = GoogleSansRounded,
+                                fontFamily = LocalAppFontFamily.current,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                             )
                         }
@@ -422,7 +423,7 @@ private fun NotLoggedInCard(cardShape: AbsoluteSmoothCornerShape, onGoLogin: () 
             Text(
                 text = stringResource(R.string.kugou_login_required_toast),
                 style = MaterialTheme.typography.bodyMedium,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.height(16.dp))
@@ -433,7 +434,7 @@ private fun NotLoggedInCard(cardShape: AbsoluteSmoothCornerShape, onGoLogin: () 
             ) {
                 Text(
                     text = stringResource(R.string.kugou_login_title),
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     fontWeight = FontWeight.SemiBold
                 )
             }
@@ -492,7 +493,7 @@ private fun KugouPlaylistCard(
                 Text(
                     text = playlist.name,
                     style = MaterialTheme.typography.titleMedium,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -500,7 +501,7 @@ private fun KugouPlaylistCard(
                 Text(
                     text = stringResource(R.string.dash_song_count, playlist.songIds.size),
                     style = MaterialTheme.typography.bodySmall,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis

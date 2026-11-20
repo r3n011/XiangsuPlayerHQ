@@ -266,6 +266,7 @@ import com.theveloper.pixelplay.presentation.components.PlaylistBottomSheet
 import com.theveloper.pixelplay.presentation.components.PlaylistContainer
 import com.theveloper.pixelplay.presentation.components.subcomps.PlayingEqIcon
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import java.util.Locale
 import androidx.compose.ui.platform.LocalContext
 import android.widget.Toast
@@ -1046,7 +1047,7 @@ fun LibraryScreen(
                             Text(
                                 modifier = Modifier.padding(start = 8.dp),
                                 text = stringResource(R.string.presentation_batch_d_library_title),
-                                fontFamily = GoogleSansRounded,
+                                fontFamily = LocalAppFontFamily.current,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = MaterialTheme.colorScheme.primary,
                                 fontSize = 40.sp,
@@ -3021,7 +3022,7 @@ private fun LibraryTabSwitcherSheet(
             Text(
                 text = stringResource(R.string.presentation_batch_d_library_tabs_sheet_title),
                 style = MaterialTheme.typography.headlineSmall,
-                fontFamily = GoogleSansRounded
+                fontFamily = LocalAppFontFamily.current
             )
             Text(
                 text = stringResource(R.string.presentation_batch_d_library_tabs_sheet_subtitle),
@@ -3642,7 +3643,7 @@ fun FolderPlaylistItem(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     folder.name,
-                    style = MaterialTheme.typography.titleMedium.copy(fontFamily = GoogleSansRounded),
+                    style = MaterialTheme.typography.titleMedium.copy(fontFamily = LocalAppFontFamily.current),
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis

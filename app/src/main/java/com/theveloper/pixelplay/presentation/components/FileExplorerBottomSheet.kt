@@ -90,6 +90,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.theveloper.pixelplay.presentation.screens.TabAnimation
 import com.theveloper.pixelplay.presentation.viewmodel.DirectoryEntry
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import com.theveloper.pixelplay.ui.theme.LocalShowScrollbar
 import com.theveloper.pixelplay.utils.StorageInfo
 import java.io.File
@@ -238,7 +239,7 @@ fun FileExplorerContent(
                 title = {
                     Text(
                         text = title,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontSize = 22.sp,
 //                            textGeometricTransform = TextGeometricTransform(scaleX = 1.2f),
@@ -333,7 +334,7 @@ fun FileExplorerContent(
                                 text = storage.displayName,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1,
-                                fontFamily = GoogleSansRounded
+                                fontFamily = LocalAppFontFamily.current
                             )
                         }
                     }

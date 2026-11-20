@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 
 /**
  * 批量下载确认面板：把选中的歌曲分成「可下载（在线）」与「本地（跳过）」两组列出来，
@@ -74,7 +75,7 @@ fun DownloadSelectionSheet(
             Text(
                 text = stringResource(R.string.download_selection_title),
                 style = MaterialTheme.typography.titleLarge,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 fontWeight = FontWeight.Bold
             )
             Spacer(Modifier.padding(top = 4.dp))
@@ -85,7 +86,7 @@ fun DownloadSelectionSheet(
                     localSongs.size
                 ),
                 style = MaterialTheme.typography.bodySmall,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.padding(top = 8.dp))
@@ -114,7 +115,7 @@ fun DownloadSelectionSheet(
                                     else R.string.lyric_share_select_all
                                 ),
                                 style = MaterialTheme.typography.labelMedium,
-                                fontFamily = GoogleSansRounded,
+                                fontFamily = LocalAppFontFamily.current,
                                 color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier
                                     .clickable {
@@ -167,7 +168,7 @@ fun DownloadSelectionSheet(
                     } else {
                         stringResource(R.string.download_selection_confirm, chosen.size)
                     },
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     fontWeight = FontWeight.SemiBold
                 )
             }
@@ -184,7 +185,7 @@ private fun SectionHeader(
     Text(
         text = text,
         style = MaterialTheme.typography.labelLarge,
-        fontFamily = GoogleSansRounded,
+        fontFamily = LocalAppFontFamily.current,
         fontWeight = FontWeight.SemiBold,
         color = color,
         modifier = modifier.padding(vertical = 4.dp)
@@ -228,7 +229,7 @@ private fun SongRow(
             Text(
                 text = song.title,
                 style = MaterialTheme.typography.bodyMedium,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -236,7 +237,7 @@ private fun SongRow(
             Text(
                 text = song.displayArtist,
                 style = MaterialTheme.typography.labelSmall,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -261,7 +262,7 @@ private fun SongRow(
                     else R.string.download_selection_badge_local
                 ),
                 style = MaterialTheme.typography.labelSmall,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 color = if (downloadable) {
                     MaterialTheme.colorScheme.onPrimaryContainer
                 } else {

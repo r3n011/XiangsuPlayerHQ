@@ -147,6 +147,7 @@ import com.theveloper.pixelplay.presentation.viewmodel.PlaylistViewModel.Compani
 import com.theveloper.pixelplay.presentation.utils.LocalAppHapticsConfig
 import com.theveloper.pixelplay.presentation.utils.performAppCompatHapticFeedback
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import com.theveloper.pixelplay.presentation.viewmodel.PlaylistSongsOrderMode
 import com.theveloper.pixelplay.utils.formatSongCount
 import com.theveloper.pixelplay.utils.formatTotalDuration
@@ -375,7 +376,7 @@ fun PlaylistDetailScreen(
                     Text(
                         modifier = Modifier.padding(start = 8.dp),
                         text = currentPlaylist?.name ?: fallbackPlaylistName,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -392,7 +393,7 @@ fun PlaylistDetailScreen(
                             formatSongCount(songsInPlaylist.size),
                             formatTotalDuration(songsInPlaylist)
                         ),
-                        style = MaterialTheme.typography.labelMedium.copy(fontFamily = GoogleSansRounded),
+                        style = MaterialTheme.typography.labelMedium.copy(fontFamily = LocalAppFontFamily.current),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 },

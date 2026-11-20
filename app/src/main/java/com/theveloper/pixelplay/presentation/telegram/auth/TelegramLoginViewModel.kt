@@ -35,6 +35,9 @@ class TelegramLoginViewModel @Inject constructor(
 
     val authorizationState = telegramRepository.authorizationState
 
+    /** TDLib 初始化失败原因（native 库加载失败 / Client.create 抛错），成功为 null。 */
+    val initFailure = telegramRepository.initFailure
+
     private val _uiState = MutableStateFlow(TelegramLoginUiState())
     val uiState = _uiState.asStateFlow()
 

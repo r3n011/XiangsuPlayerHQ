@@ -129,6 +129,7 @@ import com.theveloper.pixelplay.data.model.SmartPlaylistRule
 // import com.theveloper.pixelplay.presentation.screens.ShapeType // Removed local enum
 import com.theveloper.pixelplay.presentation.components.SongPickerSelectionPane
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import androidx.compose.material3.Slider
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -399,7 +400,7 @@ private fun CreatePlaylistContent(
                                 fontSize = 24.sp,
                                 textGeometricTransform = TextGeometricTransform(scaleX = 1.2f),
                             ),
-                            fontFamily = GoogleSansRounded,
+                            fontFamily = LocalAppFontFamily.current,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -593,7 +594,7 @@ private fun CreatePlaylistContent(
                                     Spacer(Modifier.width(6.dp))
                                     Text(
                                         text = stringResource(labelRes),
-                                        fontFamily = GoogleSansRounded,
+                                        fontFamily = LocalAppFontFamily.current,
                                         fontWeight = FontWeight.Bold,
                                         modifier = Modifier.padding(end = 4.dp)
                                     )
@@ -830,7 +831,7 @@ fun EditPlaylistContent(
                             fontSize = 24.sp,
                             textGeometricTransform = TextGeometricTransform(scaleX = 1.2f),
                         ),
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         fontWeight = FontWeight.Bold
                     )
                 },

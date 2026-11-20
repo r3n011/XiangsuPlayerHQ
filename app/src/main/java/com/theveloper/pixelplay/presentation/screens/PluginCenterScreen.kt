@@ -100,6 +100,7 @@ import com.theveloper.pixelplay.presentation.components.ExpressiveButtonGroup
 import com.theveloper.pixelplay.presentation.components.PixelAlertDialog
 import com.theveloper.pixelplay.presentation.viewmodel.PluginViewModel
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 
 /**
  * 插件中心：已安装 / 商店 / 详情 / 协议门槛 / 指令坞。
@@ -143,7 +144,7 @@ fun PluginCenterScreen(
                 title = {
                     Text(
                         text = stringResource(R.string.settings_category_plugins_title),
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                     )
@@ -378,10 +379,10 @@ private fun StoreTab(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Text(error, color = MaterialTheme.colorScheme.error, fontFamily = GoogleSansRounded)
+            Text(error, color = MaterialTheme.colorScheme.error, fontFamily = LocalAppFontFamily.current)
             Spacer(Modifier.height(12.dp))
             OutlinedButton(onClick = onImport) {
-                Text(stringResource(R.string.plugin_import_local), fontFamily = GoogleSansRounded)
+                Text(stringResource(R.string.plugin_import_local), fontFamily = LocalAppFontFamily.current)
             }
         }
         return
@@ -396,7 +397,7 @@ private fun StoreTab(
                 text = stringResource(R.string.plugin_store_hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
             )
         }
         items(plugins, key = { it.id }) { plugin ->
@@ -413,7 +414,7 @@ private fun StoreTab(
         item {
             Spacer(Modifier.height(8.dp))
             OutlinedButton(onClick = onImport, modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.plugin_import_local), fontFamily = GoogleSansRounded)
+                Text(stringResource(R.string.plugin_import_local), fontFamily = LocalAppFontFamily.current)
             }
         }
     }
@@ -454,7 +455,7 @@ private fun PluginRow(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = name,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         fontWeight = FontWeight.SemiBold,
                         style = MaterialTheme.typography.bodyLarge,
                     )
@@ -463,7 +464,7 @@ private fun PluginRow(
                         text = "v$version",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                     )
                 }
                 if (description.isNotBlank()) {
@@ -472,7 +473,7 @@ private fun PluginRow(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                     )
                 }
             }
@@ -508,14 +509,14 @@ private fun StoreRow(
                 Column(Modifier.weight(1f)) {
                     Text(
                         text = plugin.name,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         fontWeight = FontWeight.SemiBold,
                     )
                     Text(
                         text = "v${plugin.version}" + localVersion?.let { " · 已安装 v$it" }.orEmpty(),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                     )
                 }
                 StoreActionButton(state, plugin, localVersion, hasUpdate, onInstall)
@@ -526,7 +527,7 @@ private fun StoreRow(
                     text = plugin.description,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                 )
             }
             if (state is XsItemState.Downloading) {
@@ -550,25 +551,25 @@ private fun StoreActionButton(
 ) {
     when (state) {
         is XsItemState.Downloading -> FilledTonalButton(onClick = {}, enabled = false) {
-            Text("${(state.progress * 100).toInt()}%", fontFamily = GoogleSansRounded)
+            Text("${(state.progress * 100).toInt()}%", fontFamily = LocalAppFontFamily.current)
         }
         is XsItemState.Verifying, is XsItemState.Installing -> FilledTonalButton(onClick = {}, enabled = false) {
-            Text(stringResource(R.string.plugin_installing), fontFamily = GoogleSansRounded)
+            Text(stringResource(R.string.plugin_installing), fontFamily = LocalAppFontFamily.current)
         }
         is XsItemState.Failed -> Button(onClick = onInstall) {
-            Text(stringResource(R.string.plugin_retry), fontFamily = GoogleSansRounded)
+            Text(stringResource(R.string.plugin_retry), fontFamily = LocalAppFontFamily.current)
         }
         else -> {
             if (localVersion != null && !hasUpdate) {
                 FilledTonalButton(onClick = {}, enabled = false) {
-                    Text(stringResource(R.string.plugin_installed), fontFamily = GoogleSansRounded)
+                    Text(stringResource(R.string.plugin_installed), fontFamily = LocalAppFontFamily.current)
                 }
             } else {
                 Button(onClick = onInstall) {
                     Text(
                         text = if (hasUpdate) stringResource(R.string.plugin_update)
                         else stringResource(R.string.plugin_install),
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                     )
                 }
             }
@@ -631,14 +632,14 @@ private fun PluginDetailSheet(
                                 text = record.manifest.name,
                                 style = MaterialTheme.typography.headlineSmall,
                                 fontWeight = FontWeight.Bold,
-                                fontFamily = GoogleSansRounded,
+                                fontFamily = LocalAppFontFamily.current,
                             )
                             Spacer(Modifier.height(4.dp))
                             Text(
                                 text = "v${record.version} · ${record.manifest.author?.name ?: "XIANGSUDEV"}",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontFamily = GoogleSansRounded,
+                                fontFamily = LocalAppFontFamily.current,
                             )
                         }
                         StatusPill(enabled = record.enabled)
@@ -657,7 +658,7 @@ private fun PluginDetailSheet(
 
                     record.manifest.description?.takeIf { it.isNotBlank() }?.let {
                         Spacer(Modifier.height(10.dp))
-                        Text(it, style = MaterialTheme.typography.bodySmall, fontFamily = GoogleSansRounded)
+                        Text(it, style = MaterialTheme.typography.bodySmall, fontFamily = LocalAppFontFamily.current)
                     }
                     record.lastError?.takeIf { it.isNotBlank() }?.let { error ->
                         Spacer(Modifier.height(8.dp))
@@ -665,7 +666,7 @@ private fun PluginDetailSheet(
                             text = error,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error,
-                            fontFamily = GoogleSansRounded,
+                            fontFamily = LocalAppFontFamily.current,
                         )
                     }
                 }
@@ -712,13 +713,13 @@ private fun PluginDetailSheet(
                             ),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
-                            fontFamily = GoogleSansRounded,
+                            fontFamily = LocalAppFontFamily.current,
                         )
                         Text(
                             text = stringResource(R.string.plugin_toggle_hint),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontFamily = GoogleSansRounded,
+                            fontFamily = LocalAppFontFamily.current,
                         )
                     }
                     Switch(checked = record.enabled, onCheckedChange = onEnableChange)
@@ -735,7 +736,7 @@ private fun PluginDetailSheet(
                 ) {
                     Icon(Icons.Rounded.Extension, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.plugin_open_panel), fontFamily = GoogleSansRounded)
+                    Text(stringResource(R.string.plugin_open_panel), fontFamily = LocalAppFontFamily.current)
                 }
             }
 
@@ -788,7 +789,7 @@ private fun PluginDetailSheet(
                         text = stringResource(R.string.plugin_no_receipts),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         modifier = Modifier.padding(16.dp),
                     )
                 } else {
@@ -804,13 +805,13 @@ private fun PluginDetailSheet(
             Spacer(Modifier.height(18.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = onClearData, modifier = Modifier.weight(1f)) {
-                    Text(stringResource(R.string.plugin_clear_data), fontFamily = GoogleSansRounded)
+                    Text(stringResource(R.string.plugin_clear_data), fontFamily = LocalAppFontFamily.current)
                 }
                 OutlinedButton(onClick = onUninstall, modifier = Modifier.weight(1f)) {
                     Text(
                         text = stringResource(R.string.plugin_uninstall),
                         color = MaterialTheme.colorScheme.error,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                     )
                 }
             }
@@ -841,32 +842,43 @@ private fun StatusPill(enabled: Boolean) {
             ),
             style = MaterialTheme.typography.labelSmall,
             color = color,
-            fontFamily = GoogleSansRounded,
+            fontFamily = LocalAppFontFamily.current,
         )
     }
 }
 
+/** 宿主尚未实现的 host 能力（XsHostBridge 中对应调用返回 not_implemented）。 */
+private val HOST_UNSUPPORTED_CAPABILITIES = setOf("cast", "device", "musicSource")
+
 @Composable
 private fun CapabilityChip(id: String) {
+    // KI-011：宿主尚未实现的 host 能力（cast/device/musicSource 调用返回 not_implemented）
+    // 在能力 chip 上如实标注，避免插件声明了能力却调不动时用户一头雾水。
+    val unsupported = id in HOST_UNSUPPORTED_CAPABILITIES
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(999.dp))
-            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+            .background(
+                if (unsupported) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)
+                else MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+            )
             .padding(horizontal = 9.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
             imageVector = capabilityIcon(id),
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
+            tint = if (unsupported) MaterialTheme.colorScheme.onSurfaceVariant
+            else MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(13.dp),
         )
         Spacer(Modifier.width(4.dp))
         Text(
-            text = capabilityLabel(id),
+            text = capabilityLabel(id) + if (unsupported) " · " + stringResource(R.string.ui_not_supported_yet) else "",
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.primary,
-            fontFamily = GoogleSansRounded,
+            color = if (unsupported) MaterialTheme.colorScheme.onSurfaceVariant
+            else MaterialTheme.colorScheme.primary,
+            fontFamily = LocalAppFontFamily.current,
         )
     }
 }
@@ -896,13 +908,13 @@ private fun StatCard(
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
             )
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
             )
         }
     }
@@ -915,7 +927,7 @@ private fun SectionHeader(title: String, hint: String?, count: Int) {
             text = title,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            fontFamily = GoogleSansRounded,
+            fontFamily = LocalAppFontFamily.current,
         )
         if (hint != null) {
             Spacer(Modifier.width(8.dp))
@@ -923,7 +935,7 @@ private fun SectionHeader(title: String, hint: String?, count: Int) {
                 text = hint,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
             )
         }
         Spacer(Modifier.weight(1f))
@@ -931,7 +943,7 @@ private fun SectionHeader(title: String, hint: String?, count: Int) {
             text = count.toString(),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.primary,
-            fontFamily = GoogleSansRounded,
+            fontFamily = LocalAppFontFamily.current,
         )
     }
 }
@@ -965,13 +977,13 @@ private fun ActionDockRow(title: String, onRun: () -> Unit) {
                 text = title,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
             )
             Text(
                 text = stringResource(R.string.plugin_action_once),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
             )
         }
         FilledTonalIconButton(onClick = onRun, modifier = Modifier.size(36.dp)) {
@@ -993,14 +1005,14 @@ private fun ReceiptRow(event: com.theveloper.pixelplay.data.plugin.XSPluginEvent
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.width(64.dp),
-            fontFamily = GoogleSansRounded,
+            fontFamily = LocalAppFontFamily.current,
         )
         Text(
             text = event.message,
             style = MaterialTheme.typography.bodySmall,
             maxLines = 2,
             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-            fontFamily = GoogleSansRounded,
+            fontFamily = LocalAppFontFamily.current,
         )
     }
 }
@@ -1051,7 +1063,7 @@ private fun SectionTitle(text: String) {
         text = text,
         style = MaterialTheme.typography.labelLarge,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        fontFamily = GoogleSansRounded,
+        fontFamily = LocalAppFontFamily.current,
     )
     Spacer(Modifier.height(6.dp))
 }
@@ -1070,7 +1082,7 @@ private fun XsAgreementDialog(
     var tabIndex by remember { mutableIntStateOf(0) }
     PixelAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title, fontFamily = GoogleSansRounded, fontWeight = FontWeight.Bold) },
+        title = { Text(title, fontFamily = LocalAppFontFamily.current, fontWeight = FontWeight.Bold) },
         text = {
             Column {
                 if (tabs.size > 1) {
@@ -1086,7 +1098,7 @@ private fun XsAgreementDialog(
                     Text(
                         text = stringResource(R.string.plugin_permissions),
                         style = MaterialTheme.typography.labelLarge,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                     )
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         permissions.forEach { permission ->
@@ -1096,7 +1108,7 @@ private fun XsAgreementDialog(
                                     Text(
                                         text = XS_PERMISSION_LABELS[permission] ?: permission,
                                         style = MaterialTheme.typography.labelSmall,
-                                        fontFamily = GoogleSansRounded,
+                                        fontFamily = LocalAppFontFamily.current,
                                     )
                                 },
                             )
@@ -1107,7 +1119,7 @@ private fun XsAgreementDialog(
                 Text(
                     text = tabs.getOrNull(tabIndex)?.second.orEmpty().toPlainMarkdown(),
                     style = MaterialTheme.typography.bodySmall,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     modifier = Modifier
                         .height(320.dp)
                         .verticalScroll(rememberScrollState()),
@@ -1116,12 +1128,12 @@ private fun XsAgreementDialog(
         },
         confirmButton = {
             TextButton(onClick = onAgree) {
-                Text(stringResource(R.string.plugin_agree), fontFamily = GoogleSansRounded)
+                Text(stringResource(R.string.plugin_agree), fontFamily = LocalAppFontFamily.current)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.plugin_decline), fontFamily = GoogleSansRounded)
+                Text(stringResource(R.string.plugin_decline), fontFamily = LocalAppFontFamily.current)
             }
         },
     )
@@ -1134,7 +1146,7 @@ private fun EmptyHint(text: String) {
             text = text,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontFamily = GoogleSansRounded,
+            fontFamily = LocalAppFontFamily.current,
         )
     }
 }

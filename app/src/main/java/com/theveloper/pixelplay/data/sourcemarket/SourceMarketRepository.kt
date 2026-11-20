@@ -15,11 +15,11 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import timber.log.Timber
+import com.theveloper.pixelplay.utils.ZipNameCharsets
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
-import java.util.zip.ZipInputStream
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -172,12 +172,16 @@ class SourceMarketRepository @Inject constructor(
      * 单条目上限 [MAX_ENTRY_BYTES]；同名去重（保留首个）。
      */
     suspend fun inspectZip(zipFile: File): List<MarketJsEntry> = withContext(Dispatchers.IO) {
-        val result = LinkedHashMap<String, MarketJsEntry>()
         try {
-            ZipInputStream(zipFile.inputStream(), Charsets.UTF_8).use { zis ->
+            // 先按 UTF-8 遍历；GBK 老包会解码失败或产出乱码名，此时回退 GB18030 重读（KI-047）
+            ZipNameCharsets.openZipStream(zipFile) { zis ->
+                val result = LinkedHashMap<String, MarketJsEntry>()
                 var entry = zis.nextEntry
                 while (entry != null) {
                     val rawName = entry.name
+                    if (ZipNameCharsets.isMojibake(rawName)) {
+                        throw ZipNameCharsets.ZipNameMojibakeException("条目名乱码：$rawName")
+                    }
                     if (!rawName.endsWith(".js", ignoreCase = true) || entry.isDirectory) {
                         zis.closeEntry()
                         entry = zis.nextEntry
@@ -207,10 +211,11 @@ class SourceMarketRepository @Inject constructor(
                     zis.closeEntry()
                     entry = zis.nextEntry
                 }
+                result.values.toList()
             }
         } catch (e: Exception) {
             Timber.e(e, "SourceMarket: inspectZip failed for ${zipFile.name}")
+            emptyList()
         }
-        result.values.toList()
     }
 }

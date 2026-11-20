@@ -78,6 +78,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import com.theveloper.pixelplay.ui.theme.PixelPlayTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
@@ -231,12 +232,12 @@ private fun QqMusicLoginScreen(
         PixelAlertDialog(
             onDismissRequest = { showExitDialog = false },
             title = {
-                Text(text = stringResource(R.string.auth_web_exit_confirm_title_qq), fontFamily = GoogleSansRounded)
+                Text(text = stringResource(R.string.auth_web_exit_confirm_title_qq), fontFamily = LocalAppFontFamily.current)
             },
             text = {
                 Text(
                     text = stringResource(R.string.auth_web_exit_confirm_body),
-                    fontFamily = GoogleSansRounded
+                    fontFamily = LocalAppFontFamily.current
                 )
             },
             confirmButton = {
@@ -246,12 +247,12 @@ private fun QqMusicLoginScreen(
                         onClose()
                     }
                 ) {
-                    Text(text = stringResource(R.string.auth_exit), fontFamily = GoogleSansRounded, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(text = stringResource(R.string.auth_exit), fontFamily = LocalAppFontFamily.current, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showExitDialog = false }) {
-                    Text(text = stringResource(R.string.auth_stay), fontFamily = GoogleSansRounded, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(text = stringResource(R.string.auth_stay), fontFamily = LocalAppFontFamily.current, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         )
@@ -300,7 +301,7 @@ private fun QqMusicLoginScreen(
                     ) {
                         Text(
                             text = stringResource(R.string.qq_login_mode_phone),
-                            fontFamily = GoogleSansRounded,
+                            fontFamily = LocalAppFontFamily.current,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -413,7 +414,7 @@ private fun QqMusicLoginScreen(
                                 is QqMusicLoginState.Loading -> stringResource(R.string.auth_saving)
                                 else -> stringResource(R.string.auth_done)
                             },
-                            fontFamily = GoogleSansRounded,
+                            fontFamily = LocalAppFontFamily.current,
                             fontWeight = FontWeight.SemiBold
                         )
                     }
@@ -445,7 +446,7 @@ private fun QqMusicLoginScreen(
                     text = stringResource(R.string.auth_web_login_security_note_qq),
                     modifier = Modifier.padding(12.dp),
                     style = MaterialTheme.typography.bodySmall,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -476,7 +477,7 @@ private fun QqMusicLoginScreen(
                             text = errorText,
                             modifier = Modifier.weight(1f),
                             style = MaterialTheme.typography.bodySmall,
-                            fontFamily = GoogleSansRounded,
+                            fontFamily = LocalAppFontFamily.current,
                             color = MaterialTheme.colorScheme.onErrorContainer
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -487,7 +488,7 @@ private fun QqMusicLoginScreen(
                                 webView?.reload()
                             }
                         ) {
-                            Text(text = stringResource(R.string.auth_web_retry), fontFamily = GoogleSansRounded, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(text = stringResource(R.string.auth_web_retry), fontFamily = LocalAppFontFamily.current, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }
                 }

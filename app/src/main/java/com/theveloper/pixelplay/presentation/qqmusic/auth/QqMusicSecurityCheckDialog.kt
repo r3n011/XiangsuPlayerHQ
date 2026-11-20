@@ -49,6 +49,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 
 /**
  * QQ 音乐安全验证弹窗（风控返回 `code=20276` + `securityURL` 时弹出）。
@@ -120,7 +121,7 @@ internal fun QqMusicSecurityCheckDialog(
                         text = localizedStringResource(R.string.ui_qq_music_security_verification),
                         modifier = Modifier.weight(1f),
                         style = MaterialTheme.typography.titleMedium,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -196,7 +197,7 @@ internal fun QqMusicSecurityCheckDialog(
                         text = localizedStringResource(R.string.ui_follow_the_instructions_on_the_page_then_tap_verification_complete),
                         modifier = Modifier.weight(1f),
                         style = MaterialTheme.typography.bodySmall,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(Modifier.width(12.dp))
@@ -206,7 +207,7 @@ internal fun QqMusicSecurityCheckDialog(
                     ) {
                         Text(
                             text = localizedStringResource(R.string.ui_verification_complete),
-                            fontFamily = GoogleSansRounded,
+                            fontFamily = LocalAppFontFamily.current,
                             fontWeight = FontWeight.SemiBold
                         )
                     }

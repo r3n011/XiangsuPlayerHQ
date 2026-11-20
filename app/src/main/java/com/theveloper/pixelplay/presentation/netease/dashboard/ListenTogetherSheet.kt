@@ -58,6 +58,7 @@ import com.theveloper.pixelplay.data.listentogether.ListenTogetherPhase
 import com.theveloper.pixelplay.data.listentogether.ListenTogetherState
 import com.theveloper.pixelplay.presentation.components.listentogether.ListenTogetherAvatar
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 
 /**
  * 网易云一起听面板：
@@ -102,7 +103,7 @@ fun ListenTogetherSheet(
                 Text(
                     text = stringResource(R.string.listen_together_title),
                     style = MaterialTheme.typography.titleLarge,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -110,7 +111,7 @@ fun ListenTogetherSheet(
             Text(
                 text = stringResource(R.string.listen_together_desc),
                 style = MaterialTheme.typography.bodySmall,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
@@ -154,7 +155,7 @@ fun ListenTogetherSheet(
                 Text(
                     text = error,
                     style = MaterialTheme.typography.bodySmall,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     color = MaterialTheme.colorScheme.error
                 )
             }
@@ -211,7 +212,7 @@ private fun IdleContent(
             Text(
                 text = stringResource(R.string.listen_together_create_from_current_hint),
                 style = MaterialTheme.typography.bodySmall,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
@@ -229,7 +230,7 @@ private fun IdleContent(
             Text(
                 text = stringResource(R.string.listen_together_open_dashboard),
                 style = MaterialTheme.typography.bodySmall,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         } else {
@@ -252,7 +253,7 @@ private fun IdleContent(
                                 ?: stringResource(R.string.listen_together_pick_playlist),
                             modifier = Modifier.weight(1f),
                             style = MaterialTheme.typography.bodyMedium,
-                            fontFamily = GoogleSansRounded,
+                            fontFamily = LocalAppFontFamily.current,
                             color = if (selectedPlaylist != null) {
                                 MaterialTheme.colorScheme.onSurface
                             } else {
@@ -274,7 +275,7 @@ private fun IdleContent(
                             text = {
                                 Text(
                                     text = playlist.name,
-                                    fontFamily = GoogleSansRounded,
+                                    fontFamily = LocalAppFontFamily.current,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
@@ -315,7 +316,7 @@ private fun IdleContent(
                 Spacer(Modifier.width(8.dp))
                 Text(
                     text = stringResource(R.string.listen_together_roaming),
-                    fontFamily = GoogleSansRounded
+                    fontFamily = LocalAppFontFamily.current
                 )
             }
         }
@@ -342,12 +343,12 @@ private fun IdleContent(
             shape = RoundedCornerShape(16.dp),
             singleLine = true,
             isError = joinError,
-            textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = GoogleSansRounded),
+            textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = LocalAppFontFamily.current),
             placeholder = {
                 Text(
                     text = stringResource(R.string.listen_together_paste_link_placeholder),
                     style = MaterialTheme.typography.bodySmall,
-                    fontFamily = GoogleSansRounded
+                    fontFamily = LocalAppFontFamily.current
                 )
             }
         )
@@ -357,7 +358,7 @@ private fun IdleContent(
                 Text(
                     text = stringResource(R.string.listen_together_invite_invalid),
                     style = MaterialTheme.typography.bodySmall,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     color = MaterialTheme.colorScheme.error
                 )
             }
@@ -367,7 +368,7 @@ private fun IdleContent(
                 Text(
                     text = stringResource(R.string.listen_together_resolving_link),
                     style = MaterialTheme.typography.bodySmall,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     color = MaterialTheme.colorScheme.primary
                 )
             }
@@ -377,7 +378,7 @@ private fun IdleContent(
                 Text(
                     text = stringResource(R.string.listen_together_clipboard_detected),
                     style = MaterialTheme.typography.bodySmall,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -437,14 +438,14 @@ private fun ListenTogetherActionCard(
                     Text(
                         text = title,
                         style = MaterialTheme.typography.titleMedium,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         fontWeight = FontWeight.SemiBold
                     )
                     Spacer(Modifier.height(2.dp))
                     Text(
                         text = subtitle,
                         style = MaterialTheme.typography.bodySmall,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -483,7 +484,7 @@ private fun ListenTogetherPrimaryButton(
         }
         Text(
             text = text,
-            fontFamily = GoogleSansRounded,
+            fontFamily = LocalAppFontFamily.current,
             fontWeight = FontWeight.SemiBold
         )
     }
@@ -526,20 +527,20 @@ private fun RoomContent(
         Text(
             text = "Room #${room.id}",
             style = MaterialTheme.typography.bodyMedium,
-            fontFamily = GoogleSansRounded,
+            fontFamily = LocalAppFontFamily.current,
             fontWeight = FontWeight.SemiBold
         )
         Text(
             text = statusText,
             style = MaterialTheme.typography.bodySmall,
-            fontFamily = GoogleSansRounded,
+            fontFamily = LocalAppFontFamily.current,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(12.dp))
         Text(
             text = stringResource(R.string.listen_together_members),
             style = MaterialTheme.typography.titleSmall,
-            fontFamily = GoogleSansRounded,
+            fontFamily = LocalAppFontFamily.current,
             fontWeight = FontWeight.SemiBold
         )
         // ⚡ 房主暂离：网易云没有 waiting 字段，用"房主不在成员列表"推导（见 ListenTogetherState.waitingForHost）
@@ -547,7 +548,7 @@ private fun RoomContent(
             Text(
                 text = stringResource(R.string.listen_together_host_left),
                 style = MaterialTheme.typography.bodySmall,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 color = MaterialTheme.colorScheme.error
             )
             Spacer(Modifier.height(8.dp))
@@ -567,7 +568,7 @@ private fun RoomContent(
                 Text(
                     text = member.name,
                     style = MaterialTheme.typography.bodyMedium,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     modifier = Modifier.weight(1f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -605,7 +606,7 @@ private fun RoomContent(
             OutlinedButton(onClick = { inviteText()?.let { text -> onShare(text, context) } }) {
                 Text(
                     text = stringResource(R.string.listen_together_share),
-                    fontFamily = GoogleSansRounded
+                    fontFamily = LocalAppFontFamily.current
                 )
             }
             TextButton(onClick = onLeave) {
@@ -615,7 +616,7 @@ private fun RoomContent(
                     } else {
                         stringResource(R.string.listen_together_leave)
                     },
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     color = MaterialTheme.colorScheme.error
                 )
             }

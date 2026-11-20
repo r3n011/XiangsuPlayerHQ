@@ -40,6 +40,7 @@ import androidx.compose.material.icons.automirrored.rounded.Logout
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.CloudQueue
+import androidx.compose.material.icons.rounded.QrCodeScanner
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Sync
@@ -233,6 +234,20 @@ fun AccountsScreen(
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             item {
+                TvAuthorizeEntryCard(
+                    onClick = {
+                        safeStartActivity(
+                            context = context,
+                            intent = Intent(
+                                context,
+                                com.theveloper.pixelplay.presentation.tvauth.TvAuthorizeActivity::class.java,
+                            ),
+                        )
+                    },
+                )
+            }
+
+            item {
                 AccountsHeroSection(
                     connectedCount = connectedAccounts.size,
                     disconnectedCount = disconnectedServices.size
@@ -333,6 +348,42 @@ fun AccountsScreen(
             collapsedTitleStartPadding = 68.dp,
             showBackButton = showBackButton
         )
+    }
+}
+
+@Composable
+private fun TvAuthorizeEntryCard(onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        shape = AbsoluteSmoothCornerShape(24.dp, 60),
+        color = MaterialTheme.colorScheme.primaryContainer,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.QrCodeScanner,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.size(28.dp),
+            )
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(
+                    text = "授权电视登录",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+                Text(
+                    text = "扫描电视上的二维码，把这里的账号登录信息安全传到电视",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f),
+                )
+            }
+        }
     }
 }
 

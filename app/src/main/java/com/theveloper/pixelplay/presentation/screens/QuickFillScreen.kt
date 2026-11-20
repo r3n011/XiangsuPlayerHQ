@@ -41,6 +41,7 @@ import com.theveloper.pixelplay.presentation.components.SongPickerList
 import com.theveloper.pixelplay.presentation.components.SmartImage
 import com.theveloper.pixelplay.presentation.utils.GenreIconProvider
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 import androidx.compose.ui.res.stringResource
 import com.theveloper.pixelplay.R
@@ -100,7 +101,7 @@ fun QuickFillContent(
                             else stringResource(R.string.presentation_batch_b_quick_fill_choose_genre),
                             style = MaterialTheme.typography.titleLarge.copy(
                                 fontWeight = FontWeight.Bold,
-                                fontFamily = GoogleSansRounded,
+                                fontFamily = LocalAppFontFamily.current,
                                 textGeometricTransform = TextGeometricTransform(scaleX = 1.1f)
                             )
                         )

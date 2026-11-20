@@ -104,6 +104,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.TransformOrigin
 import com.theveloper.pixelplay.presentation.screens.TabAnimation
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import com.theveloper.pixelplay.utils.AudioMetaUtils
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.sp
@@ -878,7 +879,7 @@ fun SongInfoBottomSheet(
                             Spacer(Modifier.width(4.dp))
                             Text(
                                 stringResource(R.string.song_info_tab_options_badge),
-                                fontFamily = GoogleSansRounded,
+                                fontFamily = LocalAppFontFamily.current,
                                 fontWeight = FontWeight.Bold,
                             )
                         }
@@ -904,7 +905,7 @@ fun SongInfoBottomSheet(
                             Spacer(Modifier.width(4.dp))
                             Text(
                                 stringResource(R.string.song_info_tab_info_badge),
-                                fontFamily = GoogleSansRounded,
+                                fontFamily = LocalAppFontFamily.current,
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -1339,7 +1340,7 @@ private fun InfoTileSection(
         Text(
             text = title,
             style = MaterialTheme.typography.titleSmall,
-            fontFamily = GoogleSansRounded,
+            fontFamily = LocalAppFontFamily.current,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.primary
         )
@@ -1386,7 +1387,7 @@ private fun SongInfoTileItem(
                 Text(
                     text = tile.value,
                     style = MaterialTheme.typography.titleSmall,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis

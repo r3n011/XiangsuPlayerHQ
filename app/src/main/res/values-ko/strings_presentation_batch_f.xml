@@ -162,7 +162,8 @@
     <string name="presentation_batch_f_telegram_login_title">Telegram 로그인</string>
     <string name="presentation_batch_f_telegram_edit_number_chip">번호를 편집 중입니다. 코드를 다시 보내면 이전 코드는 무효화됩니다.</string>
     <string name="presentation_batch_f_working">작업 중…</string>
-    <string name="presentation_batch_f_telegram_status_initializing">Telegram 초기화 중…</string>
+        <string name="presentation_batch_f_telegram_init_failed">"TDLib 초기화에 실패했습니다. Telegram 기능을 사용할 수 없습니다."</string>
+<string name="presentation_batch_f_telegram_status_initializing">Telegram 초기화 중…</string>
     <string name="presentation_batch_f_telegram_status_logging_out">로그아웃 중…</string>
     <string name="presentation_batch_f_telegram_status_closing">세션 종료 중…</string>
     <string name="presentation_batch_f_telegram_status_closed">세션이 종료되었습니다. 로그인을 다시 시도하려면 다시 여세요.</string>

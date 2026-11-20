@@ -4,6 +4,7 @@ package com.theveloper.pixelplay.presentation.navigation
 
 import androidx.compose.material3.ExperimentalMaterial3Api
 import com.theveloper.pixelplay.presentation.screens.DelimiterConfigScreen
+import com.theveloper.pixelplay.presentation.screens.MashupScreen
 import com.theveloper.pixelplay.presentation.screens.WordDelimiterConfigScreen
 import com.theveloper.pixelplay.presentation.screens.ArtistWhitelistConfigScreen
 import com.theveloper.pixelplay.presentation.screens.EasterEggScreen
@@ -651,7 +652,8 @@ fun AppNavigation(
             composable(
                 Screen.DJSpace.route,
             ) {
-                // DJSpace placeholder – no standalone screen currently
+                // DJ 打碟台（KI-011）：此前是空占位；MashupScreen 早已实现，这里接上路由
+                MashupScreen()
             }
             composable(
                 Screen.NavBarCrRad.route,

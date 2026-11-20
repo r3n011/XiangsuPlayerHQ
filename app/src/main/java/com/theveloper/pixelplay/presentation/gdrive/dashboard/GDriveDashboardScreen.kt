@@ -36,6 +36,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.theveloper.pixelplay.data.database.GDriveFolderEntity
 import com.theveloper.pixelplay.presentation.gdrive.auth.GDriveLoginActivity
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.res.stringResource
@@ -65,7 +66,7 @@ fun GDriveDashboardScreen(
                 title = {
                     Text(
                         stringResource(R.string.auth_gdrive_title),
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         fontWeight = FontWeight.Bold
                     )
                 },
@@ -153,7 +154,7 @@ fun GDriveDashboardScreen(
                             Text(
                                 text = message,
                                 style = MaterialTheme.typography.bodyMedium,
-                                fontFamily = GoogleSansRounded
+                                fontFamily = LocalAppFontFamily.current
                             )
                         }
                     }
@@ -194,7 +195,7 @@ fun GDriveDashboardScreen(
                             Text(
                                 text = email,
                                 style = MaterialTheme.typography.titleMedium,
-                                fontFamily = GoogleSansRounded,
+                                fontFamily = LocalAppFontFamily.current,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
@@ -202,7 +203,7 @@ fun GDriveDashboardScreen(
                             Text(
                                 text = stringResource(R.string.dash_folders_synced_count, folders.size),
                                 style = MaterialTheme.typography.bodySmall,
-                                fontFamily = GoogleSansRounded,
+                                fontFamily = LocalAppFontFamily.current,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -223,7 +224,7 @@ fun GDriveDashboardScreen(
                 Text(
                     text = stringResource(R.string.dash_music_folders),
                     style = MaterialTheme.typography.titleMedium,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     fontWeight = FontWeight.Bold
                 )
                 if (folders.isEmpty()) {
@@ -234,7 +235,7 @@ fun GDriveDashboardScreen(
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(Modifier.width(4.dp))
-                        Text(stringResource(R.string.dash_action_sync), fontFamily = GoogleSansRounded, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(stringResource(R.string.dash_action_sync), fontFamily = LocalAppFontFamily.current, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
             }
@@ -260,14 +261,14 @@ fun GDriveDashboardScreen(
                         Text(
                             text = stringResource(R.string.dash_no_folders_yet),
                             style = MaterialTheme.typography.bodyLarge,
-                            fontFamily = GoogleSansRounded,
+                            fontFamily = LocalAppFontFamily.current,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(Modifier.height(8.dp))
                         Text(
                             text = stringResource(R.string.dash_tap_plus_add_drive_folder),
                             style = MaterialTheme.typography.bodyMedium,
-                            fontFamily = GoogleSansRounded,
+                            fontFamily = LocalAppFontFamily.current,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                         )
                     }
@@ -337,7 +338,7 @@ private fun GDriveFolderCard(
                 Text(
                     text = folder.name,
                     style = MaterialTheme.typography.titleSmall,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -345,7 +346,7 @@ private fun GDriveFolderCard(
                 Text(
                     text = stringResource(R.string.dash_song_count, folder.songCount),
                     style = MaterialTheme.typography.bodySmall,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }

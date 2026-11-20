@@ -57,6 +57,7 @@ import com.theveloper.pixelplay.data.kugou.KugouAudiobookAlbum
 import com.theveloper.pixelplay.data.kugou.KugouAudiobookChapter
 import com.theveloper.pixelplay.presentation.components.SmartImage
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import com.theveloper.pixelplay.utils.formatDuration
 import kotlinx.coroutines.launch
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
@@ -187,7 +188,7 @@ fun AudiobookAlbumCard(
             Text(
                 text = album.name,
                 style = MaterialTheme.typography.bodyMedium,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
@@ -197,7 +198,7 @@ fun AudiobookAlbumCard(
                 text = album.author?.takeIf { it.isNotBlank() }
                     ?: stringResource(R.string.audiobook_unknown_author),
                 style = MaterialTheme.typography.bodySmall,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -238,7 +239,7 @@ fun AudiobookAlbumRow(
                 Text(
                     text = album.name,
                     style = MaterialTheme.typography.titleMedium,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
@@ -249,7 +250,7 @@ fun AudiobookAlbumRow(
                     Text(
                         text = subtitle,
                         style = MaterialTheme.typography.bodySmall,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -259,7 +260,7 @@ fun AudiobookAlbumRow(
                     Text(
                         text = intro,
                         style = MaterialTheme.typography.bodySmall,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -324,7 +325,7 @@ fun AudiobookChapterRow(
             Text(
                 text = index.toString(),
                 style = MaterialTheme.typography.labelMedium,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 color = if (isPlaying) {
                     MaterialTheme.colorScheme.primary
                 } else {
@@ -336,7 +337,7 @@ fun AudiobookChapterRow(
                 Text(
                     text = chapter.name,
                     style = MaterialTheme.typography.bodyMedium,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     fontWeight = if (isPlaying) FontWeight.SemiBold else FontWeight.Normal,
                     color = contentColor,
                     maxLines = 2,
@@ -346,7 +347,7 @@ fun AudiobookChapterRow(
                     Text(
                         text = author,
                         style = MaterialTheme.typography.bodySmall,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         color = if (isPlaying) {
                             MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f)
                         } else {
@@ -361,7 +362,7 @@ fun AudiobookChapterRow(
             Text(
                 text = formatDuration(chapter.durationMs),
                 style = MaterialTheme.typography.labelSmall,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 color = if (isPlaying) {
                     MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f)
                 } else {
@@ -382,7 +383,7 @@ fun AudiobookSectionHeader(
         text = title,
         modifier = modifier.padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 10.dp),
         style = MaterialTheme.typography.titleMedium,
-        fontFamily = GoogleSansRounded,
+        fontFamily = LocalAppFontFamily.current,
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.onSurface,
     )
@@ -417,7 +418,7 @@ fun AudiobookEmptyState(
         Text(
             text = text,
             style = MaterialTheme.typography.bodyMedium,
-            fontFamily = GoogleSansRounded,
+            fontFamily = LocalAppFontFamily.current,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
@@ -425,7 +426,7 @@ fun AudiobookEmptyState(
             FilledTonalButton(onClick = onRetry) {
                 Text(
                     text = stringResource(R.string.audiobook_retry),
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                 )
             }
         }

@@ -38,6 +38,7 @@ import com.theveloper.pixelplay.data.database.NavidromePlaylistEntity
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.presentation.components.SmartImage
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import com.theveloper.pixelplay.utils.formatTimeAgo
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -67,7 +68,7 @@ fun NavidromeDashboardScreen(
                 title = {
                     Text(
                         stringResource(R.string.screen_subsonic_dashboard_title),
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         fontWeight = FontWeight.Bold
                     )
                 },
@@ -170,14 +171,14 @@ private fun DashboardContent(
                             Text(
                                 text = message,
                                 style = MaterialTheme.typography.bodyMedium,
-                                fontFamily = GoogleSansRounded,
+                                fontFamily = LocalAppFontFamily.current,
                                 modifier = Modifier.weight(1f)
                             )
                             if (isSyncing && syncProgress != null) {
                                 Text(
                                     text = "${(syncProgress * 100).toInt()}%",
                                     style = MaterialTheme.typography.bodySmall,
-                                    fontFamily = GoogleSansRounded,
+                                    fontFamily = LocalAppFontFamily.current,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.primary
                                 )
@@ -237,19 +238,19 @@ private fun DashboardContent(
                         Text(
                             text = name,
                             style = MaterialTheme.typography.titleMedium,
-                            fontFamily = GoogleSansRounded,
+                            fontFamily = LocalAppFontFamily.current,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
                             text = stringResource(R.string.dash_playlists_synced_count, playlists.size),
                             style = MaterialTheme.typography.bodySmall,
-                            fontFamily = GoogleSansRounded,
+                            fontFamily = LocalAppFontFamily.current,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
                             text = "Last synced: ${formatTimeAgo(lastSyncTime)}",
                             style = MaterialTheme.typography.bodySmall,
-                            fontFamily = GoogleSansRounded,
+                            fontFamily = LocalAppFontFamily.current,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                         )
                     }
@@ -277,7 +278,7 @@ private fun DashboardContent(
             Text(
                 text = stringResource(R.string.dash_title_playlists),
                 style = MaterialTheme.typography.titleMedium,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 fontWeight = FontWeight.Bold
             )
             if (playlists.isEmpty()) {
@@ -288,7 +289,7 @@ private fun DashboardContent(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(Modifier.width(4.dp))
-                    Text(stringResource(R.string.dash_action_sync), fontFamily = GoogleSansRounded, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(stringResource(R.string.dash_action_sync), fontFamily = LocalAppFontFamily.current, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
@@ -314,14 +315,14 @@ private fun DashboardContent(
                     Text(
                         text = stringResource(R.string.dash_playlists_empty_title),
                         style = MaterialTheme.typography.bodyLarge,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
                         text = stringResource(R.string.dash_playlists_empty_hint_subsonic),
                         style = MaterialTheme.typography.bodyMedium,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                     )
                 }
@@ -371,14 +372,14 @@ private fun SubsonicMenuCard(
             Text(
                 text = stringResource(R.string.dash_quick_actions),
                 style = MaterialTheme.typography.titleMedium,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = stringResource(R.string.dash_quick_actions_subsonic_subtitle),
                 style = MaterialTheme.typography.bodySmall,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.height(16.dp))
@@ -402,7 +403,7 @@ private fun SubsonicMenuCard(
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(stringResource(R.string.dash_status_syncing), fontFamily = GoogleSansRounded)
+                        Text(stringResource(R.string.dash_status_syncing), fontFamily = LocalAppFontFamily.current)
                     } else {
                         Icon(
                             Icons.Rounded.CloudSync,
@@ -410,7 +411,7 @@ private fun SubsonicMenuCard(
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(stringResource(R.string.dash_action_sync_library), fontFamily = GoogleSansRounded)
+                        Text(stringResource(R.string.dash_action_sync_library), fontFamily = LocalAppFontFamily.current)
                     }
                 }
 
@@ -428,7 +429,7 @@ private fun SubsonicMenuCard(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(stringResource(R.string.dash_action_disconnect), fontFamily = GoogleSansRounded)
+                    Text(stringResource(R.string.dash_action_disconnect), fontFamily = LocalAppFontFamily.current)
                 }
             }
         }
@@ -485,7 +486,7 @@ private fun SongCard(
                 Text(
                     text = song.title,
                     style = MaterialTheme.typography.titleSmall,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -493,7 +494,7 @@ private fun SongCard(
                 Text(
                     text = song.artist,
                     style = MaterialTheme.typography.bodySmall,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -559,7 +560,7 @@ private fun PlaylistCard(
                 Text(
                     text = playlist.name,
                     style = MaterialTheme.typography.titleSmall,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -567,7 +568,7 @@ private fun PlaylistCard(
                 Text(
                     text = stringResource(R.string.dash_song_count, playlist.songCount),
                     style = MaterialTheme.typography.bodySmall,
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }

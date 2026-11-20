@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.preferences.RoamingMode
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 
 /**
  * 网易云漫游模式选择（熟悉 / 探索）—— 首页「发现」卡片的漫游入口点击后弹出。
@@ -51,7 +52,7 @@ fun RoamingModeSheet(
             Text(
                 text = stringResource(R.string.roaming_mode_title),
                 style = MaterialTheme.typography.titleLarge,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 fontWeight = FontWeight.Bold,
             )
             Spacer(Modifier.height(12.dp))
@@ -78,7 +79,7 @@ fun RoamingModeSheet(
                                 Text(
                                     text = stringResource(mode.labelResId),
                                     style = MaterialTheme.typography.titleMedium,
-                                    fontFamily = GoogleSansRounded,
+                                    fontFamily = LocalAppFontFamily.current,
                                     fontWeight = FontWeight.SemiBold,
                                 )
                                 Text(

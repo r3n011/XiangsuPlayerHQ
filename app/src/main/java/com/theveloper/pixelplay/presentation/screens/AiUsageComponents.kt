@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.sp
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.database.AiUsageEntity
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Schedule
 import java.text.SimpleDateFormat
@@ -33,7 +34,7 @@ fun AiUsageDateHeader(date: String) {
         Text(
             text = date,
             style = MaterialTheme.typography.labelLarge.copy(
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 letterSpacing = 0.5.sp
             ),
             color = MaterialTheme.colorScheme.primary,
@@ -110,7 +111,7 @@ fun AiUsageLogItem(
                 Text(
                     text = stringResource(R.string.presentation_batch_h_ai_usage_provider_model, usage.provider, usage.model),
                     style = MaterialTheme.typography.titleSmall.copy(
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         letterSpacing = 0.2.sp
                     ),
                     color = MaterialTheme.colorScheme.onSurface,

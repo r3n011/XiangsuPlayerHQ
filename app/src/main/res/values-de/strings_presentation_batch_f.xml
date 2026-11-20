@@ -163,6 +163,7 @@
     <string name="presentation_batch_f_telegram_edit_number_chip">Nummer wird bearbeitet – neuer Code ersetzt den vorherigen.</string>
     <string name="presentation_batch_f_working">Wird bearbeitet…</string>
     <string name="presentation_batch_f_telegram_status_initializing">Telegram wird initialisiert…</string>
+    <string name="presentation_batch_f_telegram_init_failed">"TDLib konnte nicht initialisiert werden. Telegram-Funktionen sind nicht verfügbar."</string>
     <string name="presentation_batch_f_telegram_status_logging_out">Abmelden…</string>
     <string name="presentation_batch_f_telegram_status_closing">Sitzung wird geschlossen…</string>
     <string name="presentation_batch_f_telegram_status_closed">Sitzung geschlossen. Login erneut öffnen, um fortzufahren.</string>

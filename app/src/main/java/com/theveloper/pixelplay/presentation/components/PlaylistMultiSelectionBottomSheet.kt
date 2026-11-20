@@ -58,6 +58,7 @@ import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
 import com.theveloper.pixelplay.data.model.Playlist
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import com.theveloper.pixelplay.utils.resolvePlaylistCoverContentColor
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 import androidx.compose.ui.res.stringResource
@@ -142,7 +143,7 @@ fun PlaylistMultiSelectionBottomSheet(
                             text = stringResource(R.string.multi_selection_playlists_count_upper, selectedPlaylists.size),
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
-                            fontFamily = GoogleSansRounded,
+                            fontFamily = LocalAppFontFamily.current,
                             minFontSize = 16.sp,
                             maxFontSizeLimit = 24.sp,
                             maxLines = 2,
@@ -152,7 +153,7 @@ fun PlaylistMultiSelectionBottomSheet(
                             text = stringResource(R.string.multi_selection_selected),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontFamily = GoogleSansRounded,
+                            fontFamily = LocalAppFontFamily.current,
                             overflow = TextOverflow.Ellipsis,
                             maxLines = 1,
                         )

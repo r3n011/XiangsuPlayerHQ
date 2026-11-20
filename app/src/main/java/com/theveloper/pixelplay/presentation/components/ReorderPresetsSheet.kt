@@ -72,6 +72,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.equalizer.EqualizerPreset
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import kotlinx.coroutines.launch
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 import sh.calvin.reorderable.ReorderableItem
@@ -183,7 +184,7 @@ fun ReorderPresetsSheet(
                             title = {
                                 Text(
                                     text = stringResource(R.string.presentation_batch_e_manage_presets_title),
-                                    fontFamily = GoogleSansRounded,
+                                    fontFamily = LocalAppFontFamily.current,
                                     style = MaterialTheme.typography.titleMedium.copy(
                                         fontSize = 22.sp,
                                         textGeometricTransform = TextGeometricTransform(scaleX = 1.2f),

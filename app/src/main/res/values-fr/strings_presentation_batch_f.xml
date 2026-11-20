@@ -382,7 +382,8 @@
         name="presentation_batch_f_telegram_edit_number_chip"
     >Vous modifiez votre numéro. L\'envoi d\'un nouveau code remplacera le précédent.</string>
     <string name="presentation_batch_f_working">Opération en cours…</string>
-    <string
+        <string name="presentation_batch_f_telegram_init_failed">"Échec de l'initialisation de TDLib. Les fonctions Telegram sont indisponibles."</string>
+<string
         name="presentation_batch_f_telegram_status_initializing"
     >Initialisation de Telegram…</string>
     <string

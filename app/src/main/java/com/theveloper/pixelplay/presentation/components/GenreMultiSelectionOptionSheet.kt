@@ -52,6 +52,7 @@ import com.theveloper.pixelplay.data.model.Genre
 import com.theveloper.pixelplay.presentation.components.subcomps.AutoSizingTextToFill
 import com.theveloper.pixelplay.presentation.components.subcomps.TightWrapText
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import com.theveloper.pixelplay.ui.theme.LocalPixelPlayDarkTheme
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 
@@ -93,7 +94,7 @@ fun GenreMultiSelectionOptionSheet(
                         text = stringResource(R.string.multi_selection_genres_count_upper, selectedGenres.size),
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         minFontSize = 16.sp,
                         maxFontSizeLimit = 24.sp,
                         maxLines = 2,
@@ -103,7 +104,7 @@ fun GenreMultiSelectionOptionSheet(
                         text = stringResource(R.string.multi_selection_genres_selected),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         overflow = TextOverflow.Ellipsis,
                         maxLines = 1,
                     )

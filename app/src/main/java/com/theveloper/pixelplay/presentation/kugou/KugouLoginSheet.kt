@@ -74,6 +74,7 @@ import com.theveloper.pixelplay.data.kugou.KugouUserInfo
 import com.theveloper.pixelplay.presentation.components.PixelAlertDialog
 import com.theveloper.pixelplay.presentation.components.SmartImage
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -245,7 +246,7 @@ fun KugouLoginSheet(
                 title = {
                     Text(
                         text = stringResource(R.string.kugou_login_title),
-                        fontFamily = GoogleSansRounded,
+                        fontFamily = LocalAppFontFamily.current,
                         style = MaterialTheme.typography.titleMedium
                     )
                 },
@@ -354,7 +355,7 @@ fun KugouLoginSheet(
                             R.string.kugou_login_switch_to_qr
                         }
                     ),
-                    fontFamily = GoogleSansRounded,
+                    fontFamily = LocalAppFontFamily.current,
                     fontWeight = FontWeight.Medium
                 )
             }
@@ -438,7 +439,7 @@ private fun KugouBrandingHeader() {
         Text(
             text = stringResource(R.string.kugou_login_title),
             style = MaterialTheme.typography.headlineSmall,
-            fontFamily = GoogleSansRounded,
+            fontFamily = LocalAppFontFamily.current,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
         )
@@ -446,7 +447,7 @@ private fun KugouBrandingHeader() {
         Text(
             text = stringResource(R.string.kugou_login_subtitle),
             style = MaterialTheme.typography.bodyMedium,
-            fontFamily = GoogleSansRounded,
+            fontFamily = LocalAppFontFamily.current,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
@@ -486,7 +487,7 @@ private fun KugouLoadingCard(message: String) {
             Text(
                 text = message.ifBlank { AppLocaleManager.getString(R.string.ui_residue_qq_login_loading) },
                 style = MaterialTheme.typography.bodyMedium,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 color = MaterialTheme.colorScheme.onSurface
             )
             Spacer(modifier = Modifier.height(10.dp))
@@ -514,7 +515,7 @@ private fun KugouInlineErrorCard(message: String, onDismiss: () -> Unit) {
                 text = message,
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.bodyMedium,
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 color = MaterialTheme.colorScheme.onErrorContainer
             )
             FilledIconButton(
@@ -574,7 +575,7 @@ private fun KugouPhoneNumberField(
             }
             Text(
                 text = stringResource(R.string.kugou_login_code_send),
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 fontWeight = FontWeight.SemiBold
             )
         }
@@ -624,7 +625,7 @@ private fun KugouSmsCodeField(
             }
             Text(
                 text = stringResource(R.string.kugou_login_phone_submit),
-                fontFamily = GoogleSansRounded,
+                fontFamily = LocalAppFontFamily.current,
                 fontWeight = FontWeight.SemiBold
             )
         }
@@ -636,7 +637,7 @@ private fun KugouSmsCodeField(
             TextButton(onClick = onEditPhone) {
                 Text(
                     text = stringResource(R.string.kugou_login_edit_phone),
-                    fontFamily = GoogleSansRounded
+                    fontFamily = LocalAppFontFamily.current
                 )
             }
             TextButton(onClick = onResend, enabled = resendCountdown == 0) {
@@ -646,7 +647,7 @@ private fun KugouSmsCodeField(
                     } else {
                         stringResource(R.string.kugou_login_code_send)
                     },
-                    fontFamily = GoogleSansRounded
+                    fontFamily = LocalAppFontFamily.current
                 )
             }
         }
@@ -715,7 +716,7 @@ private fun KugouQrLoginContent(
                 KugouRepository.QrStatus.UNKNOWN -> stringResource(R.string.kugou_login_status_waiting)
             },
             style = MaterialTheme.typography.titleSmall,
-            fontFamily = GoogleSansRounded,
+            fontFamily = LocalAppFontFamily.current,
             color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.SemiBold,
         )
@@ -729,7 +730,7 @@ private fun KugouQrLoginContent(
             Spacer(Modifier.width(6.dp))
             Text(
                 text = stringResource(R.string.kugou_login_qr_refresh),
-                fontFamily = GoogleSansRounded
+                fontFamily = LocalAppFontFamily.current
             )
         }
     }
