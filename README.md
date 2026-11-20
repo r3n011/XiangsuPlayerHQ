@@ -4,6 +4,10 @@
 
 # 像素播放器 🎵
 
+**🌐 语言 / Languages / 言語 / Языки / Idiomas**
+
+[**简体中文**](README.md) · [English](README_en.md) · [日本語](README_ja.md) · [Русский](README_ru.md) · [Español](README_es.md)
+
 **基于 [PixelPlayer](https://github.com/theovilardo/PixelPlayer/) 的魔改版**
 
 多平台在线音源 · 专为中国用户打磨 · 像素美学与精致动效
