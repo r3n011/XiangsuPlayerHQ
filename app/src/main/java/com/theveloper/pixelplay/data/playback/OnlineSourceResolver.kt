@@ -10,6 +10,7 @@ import com.theveloper.pixelplay.data.preferences.MusicQualityCatalog
 import com.theveloper.pixelplay.presentation.viewmodel.ConnectivityStateHolder
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -31,6 +32,9 @@ class OnlineSourceResolver @Inject constructor(
 ) {
     companion object {
         private const val TAG = "OnlineSourceResolver"
+
+        /** 整条取链的全局预算：超过即失败，交给播放器兜底/下一首。 */
+        const val RESOLVE_BUDGET_MS = 15_000L
 
         /** 内置源兜底顺序：先网易云，再 QQ/酷狗/酷我/咪咕。 */
         val BUILT_IN_SOURCE_ORDER = listOf("wy", "tx", "kg", "kw", "mg")
@@ -86,7 +90,8 @@ class OnlineSourceResolver @Inject constructor(
 
         // 冷启动时 JS 脚本可能还在加载：先等它就绪再构建音源顺序，
         // 否则 getSources() 为空会把插件音源整条漏掉（只剩内置源）。
-        runCatching { lxJsEngine.awaitReady(15_000) }
+        // ⚡ 并行加载后冷启动通常 <8s；这里最多再等 8s，避免点歌白等 15s。
+        runCatching { lxJsEngine.awaitReady(8_000) }
         val sourceOrder = buildSourceOrder(request)
         if (sourceOrder.isEmpty()) {
             statusHolder.failed(request.song.name, "没有可用音源")
@@ -94,32 +99,22 @@ class OnlineSourceResolver @Inject constructor(
         }
 
         statusHolder.resolving(request.song.name, request.preferredSource ?: request.song.source)
-        var lastFailure = Outcome.Failure(FailureKind.NO_URL, "所有音源均未返回可用链接")
-        val attempts = if (request.enableRetry) 2 else 1
+        // ⚡ 整条解析链（音源 × 音质 × 多脚本 + 跨源搜索）统一 15s 预算：
+        //   超时立即失败交给播放器兜底，绝不再出现分钟级「正在解析音源…」。
+        val outcome = withTimeoutOrNull(RESOLVE_BUDGET_MS) {
+            resolveOnce(request, sourceOrder)
+        } ?: Outcome.Failure(FailureKind.NETWORK, "音源解析超时（${RESOLVE_BUDGET_MS / 1000}s）")
 
-        repeat(attempts) { attempt ->
-            if (attempt > 0) {
-                // 对齐 lx：限流类失败等更久（2~6s），普通失败 1.8s 后重试一次。
-                val waitMs = if (lastFailure.kind == FailureKind.RATE_LIMITED) 3_500L else 1_800L
-                delay(waitMs)
-            }
-            val result = resolveOnce(request, sourceOrder)
-            if (result is Outcome.Success) {
-                statusHolder.switched(
-                    songTitle = request.song.name,
-                    from = request.preferredSource ?: request.song.source.takeIf { it.isNotBlank() },
-                    to = result.source,
-                )
-                return result
-            }
-            lastFailure = result as Outcome.Failure
-            if (lastFailure.kind == FailureKind.OFFLINE || lastFailure.kind == FailureKind.NO_SOURCE) {
-                return lastFailure
-            }
+        if (outcome is Outcome.Success) {
+            statusHolder.switched(
+                songTitle = request.song.name,
+                from = request.preferredSource ?: request.song.source.takeIf { it.isNotBlank() },
+                to = outcome.source,
+            )
+            return outcome
         }
-
-        statusHolder.failed(request.song.name, lastFailure.message)
-        return lastFailure
+        statusHolder.failed(request.song.name, (outcome as Outcome.Failure).message)
+        return outcome
     }
 
     private suspend fun resolveOnce(request: Request, sourceOrder: List<String>): Outcome {
@@ -251,7 +246,11 @@ class OnlineSourceResolver @Inject constructor(
 
     private fun qualityChain(target: String, source: String): List<String> {
         val available = lxJsEngine.getSources()[source]?.qualitys.orEmpty()
-        return (MusicQualityCatalog.resolveChain(target, available) + listOf("320k", "128k")).distinct()
+        // ⚡ 裁剪：目标档 + 最多一个降级档 + 128k 兜底（原链会依次尝试所有较低音质，
+        //    每个档位都要等一次 8s JS 超时，是「取链慢」的主要来源）。
+        val chain = (MusicQualityCatalog.resolveChain(target, available) + listOf("320k", "128k"))
+            .distinct()
+        return if (chain.size <= 3) chain else (chain.take(2) + "128k").distinct()
     }
 
     private fun LxSongInfo.toJsSongInfo(): Map<String, Any?> {

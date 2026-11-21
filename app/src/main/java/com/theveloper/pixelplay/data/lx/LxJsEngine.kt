@@ -60,14 +60,82 @@ class LxJsEngine @Inject constructor(
         val sources: Map<String, LxSourceInfo>,
         val scriptInfo: LxScriptInfo,
         val versionName: String,
+        /** 该上下文固定的执行线程（QuickJS 非线程安全，必须始终在同一线程操作） */
+        val dispatcher: CoroutineDispatcher,
         val pendingCalls: ConcurrentHashMap<String, CompletableDeferred<String>>,
         val scriptRequests: ConcurrentHashMap<String, Job>,
         val timeoutIds: ConcurrentHashMap<Long, ScheduledFuture<*>>,
-    )
+    ) {
+        /** 连续失败次数（熔断用） */
+        val consecutiveFailures = java.util.concurrent.atomic.AtomicInteger(0)
+
+        /** 熔断截止时间（毫秒时间戳）：期间跳过该脚本，避免反复浪费超时预算 */
+        @Volatile
+        var cooldownUntilMs: Long = 0L
+    }
+
+    /**
+     * QuickJS 工作线程：每个上下文固定绑定一条线程。
+     * 多线程并行加载/调用（此前单线程串行是「首启 30~60s」的主因）；
+     * 某脚本死循环只会占住自己这条线程，[replace] 可在超时后丢弃卡死线程、换新线程继续加载。
+     */
+    private class QjsWorker(val index: Int) {
+        @Volatile
+        var executor: java.util.concurrent.ExecutorService = newExecutor(index)
+
+        @Volatile
+        var dispatcher: CoroutineDispatcher = executor.asCoroutineDispatcher()
+
+        fun replace() {
+            runCatching { executor.shutdownNow() }
+            executor = newExecutor(index)
+            dispatcher = executor.asCoroutineDispatcher()
+        }
+
+        private fun newExecutor(index: Int) = Executors.newSingleThreadExecutor { r ->
+            Thread(r, "lx-qjs-$index").apply { isDaemon = true }
+        }
+    }
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val mutex = Mutex()
-    private val qjsDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
+
+    companion object {
+        private const val TAG = "LxJsEngine"
+
+        /** 并行加载/执行的 QuickJS 工作线程数（4 条线程足以覆盖 28 脚本包，且内存可控） */
+        private const val QJS_WORKER_COUNT = 4
+
+        /** 单脚本 eval（含顶层执行）超时：死循环脚本不再永久占住管线 */
+        const val SCRIPT_EVAL_TIMEOUT_MS = 10_000L
+
+        /** 等待脚本用 setTimeout 异步注册音源的上限（原 2000ms，实时检测已注册即提前结束） */
+        private const val SOURCE_REGISTER_WAIT_MS = 800L
+
+        /** 单脚本 musicUrl 调用超时（原 20s：多脚本串行时会拖到分钟级） */
+        const val MUSIC_URL_CALL_TIMEOUT_MS = 8_000L
+
+        /** musicSearch 调用超时（原 30s） */
+        const val MUSIC_SEARCH_CALL_TIMEOUT_MS = 10_000L
+
+        /** 歌词 / 封面调用超时 */
+        private const val LYRIC_CALL_TIMEOUT_MS = 10_000L
+
+        /** 单次取链（同音源多脚本竞赛 + 整个 getPlayUrl）总预算 */
+        const val PLAY_URL_TOTAL_TIMEOUT_MS = 10_000L
+
+        /** 连续失败多少次后熔断 */
+        private const val FAILURE_THRESHOLD = 3
+
+        /** 熔断冷却时长 */
+        private const val COOLDOWN_MS = 60_000L
+    }
+
+    private val qjsWorkers = List(QJS_WORKER_COUNT) { QjsWorker(it) }
+    private val workerCursor = java.util.concurrent.atomic.AtomicInteger(0)
+
+    private fun nextWorker(): QjsWorker =
+        qjsWorkers[Math.floorMod(workerCursor.getAndIncrement(), QJS_WORKER_COUNT)]
     private val timerExecutor = Executors.newSingleThreadScheduledExecutor { r ->
         Thread(r, "lx-timer").apply { isDaemon = true }
     }
@@ -188,10 +256,15 @@ class LxJsEngine @Inject constructor(
         val all = sourceIndex[source].orEmpty()
         val mapped = _sourceRouting.value[source].orEmpty().filter { it in all }
         val result = if (mapped.isEmpty()) all else mapped + all.filter { it !in mapped }
-        if (result.size > 1) {
-            XsLog.d(XsLog.ROUTER, "targets for %s: %s (mapped=%s)", source, result.joinToString(","), mapped.joinToString(","))
+        // ⚡ 熔断：冷却期内的脚本跳过；若全部在冷却，退回全集（避免彻底不可用）
+        val healthy = result.filter { fileName ->
+            instances[fileName]?.let { !isCoolingDown(it) } ?: false
         }
-        return result
+        val effective = healthy.ifEmpty { result }
+        if (effective.size > 1) {
+            XsLog.d(XsLog.ROUTER, "targets for %s: %s (mapped=%s)", source, effective.joinToString(","), mapped.joinToString(","))
+        }
+        return effective
     }
     /** 当前存活的所有 QuickJS 上下文（销毁时移除，避免对已销毁上下文求值） */
     private val liveCtxs = ConcurrentHashMap.newKeySet<QuickJSContext>()
@@ -248,72 +321,27 @@ class LxJsEngine @Inject constructor(
             return@withLock false
         }
 
+        val startedAt = System.currentTimeMillis()
+        // ⚡ 并行加载：每个脚本绑定一条 QuickJS 工作线程（共 4 条），28 脚本包从
+        //   「串行 + 每脚本最多 2s 注册等待」的 30~60s 降到数秒；eval 超时的线程被
+        //   丢弃换新，死循环脚本不再阻塞整条管线。
+        val results = coroutineScope {
+            files.map { file -> async(Dispatchers.IO) { loadOneScript(file) } }.awaitAll()
+        }
+
         val loaded = LinkedHashMap<String, EngineInstance>()
         val index = LinkedHashMap<String, MutableList<String>>()
         val errors = mutableListOf<String>()
         var anySuccess = false
 
-        for (file in files) {
-            val js = fileStore.content(file)
-            if (js.isNullOrBlank()) {
-                errors += AppLocaleManager.getString(R.string.ui_file_is_empty_or_could_not_be_read, (file.name).toString())
-                continue
-            }
-            val c = runCatching {
-                withContext(qjsDispatcher) { QuickJSContext.create() }
-            }.getOrNull()
-            if (c == null) {
-                errors += AppLocaleManager.getString(R.string.ui_could_not_create_quickjs_engine_device_abi_may_be_unsupported, (file.name).toString())
-                continue
-            }
-            liveCtxs.add(c)
-
-            val srcs = runCatching {
-                withContext(qjsDispatcher) {
-                    injectLxShim(c)
-                    val evalRes = runCatching { evalCtx(c, js, file.name) }
-                    if (evalRes.isFailure) {
-                        val t = evalRes.exceptionOrNull()!!
-                        Log.e(TAG, "${file.name} eval FAILED", t)
-                        lastError = AppLocaleManager.getString(R.string.ui_javascript_parsing_or_execution_failed, (file.name).toString(), (t.javaClass.simpleName).toString(), (t.message).toString())
-                        emptyMap()
-                    } else {
-                        Log.d(TAG, "${file.name} eval OK")
-                        repeat(20) { runCatching { evalCtx(c, "null", "tick$it") } }
-                        // 允许 init 阶段用 setTimeout 异步注册音源的脚本完成初始化（最多等 2s）
-                        val deadline = System.currentTimeMillis() + 2000
-                        while (System.currentTimeMillis() < deadline) {
-                            val done = evalCtx(c, "__pixelplay_get_done_js()", "done")
-                            if (done is Number && done.toInt() == 1) break
-                            runCatching { evalCtx(c, "null", "tick") }
-                            delay(10)
-                        }
-                        readSourcesFromJs(c)
-                    }
-                }
-            }.getOrNull() ?: emptyMap()
-
-            if (srcs.isEmpty()) {
-                runCatching { withContext(qjsDispatcher) { c.destroy() } }
-                liveCtxs.remove(c)
-                errors += AppLocaleManager.getString(R.string.ui_no_sources_registered_after_initialization_or_script_execution_failed, (file.name).toString())
-                continue
-            }
-
-            loaded[file.name] = EngineInstance(
-                fileName = file.name,
-                ctx = c,
-                sources = srcs,
-                scriptInfo = parseScriptInfo(js, file.name),
-                versionName = extractVersion(js),
-                pendingCalls = ConcurrentHashMap(),
-                scriptRequests = ConcurrentHashMap(),
-                timeoutIds = ConcurrentHashMap(),
-            )
+        results.forEach { result ->
+            result.error?.let { errors += it }
+            val inst = result.instance ?: return@forEach
+            loaded[inst.fileName] = inst
             anySuccess = true
-            srcs.keys.forEach { index.getOrPut(it) { mutableListOf() }.add(file.name) }
-            Log.d(TAG, "${file.name} sources=${srcs.keys}")
+            inst.sources.keys.forEach { index.getOrPut(it) { mutableListOf() }.add(inst.fileName) }
         }
+        Log.d(TAG, "load ${files.size} scripts -> ${loaded.size} ok in ${System.currentTimeMillis() - startedAt}ms")
 
         instances = loaded
         sourceIndex = index.mapValues { it.value.toList() }
@@ -335,6 +363,110 @@ class LxJsEngine @Inject constructor(
             Log.w(TAG, "部分 JS 加载失败: ${errors.joinToString("；")}")
         }
         anySuccess
+    }
+
+    private class ScriptLoadResult(
+        val instance: EngineInstance?,
+        val error: String?,
+    )
+
+    /**
+     * 加载单个脚本（并行执行单元）：创建上下文 → 注入 shim → eval → 等待异步注册 → 读音源。
+     * eval 有超时；超时说明线程卡死在原生执行中，丢弃该工作线程并换新线程，避免拖死整条管线。
+     */
+    private suspend fun loadOneScript(file: java.io.File): ScriptLoadResult {
+        val js = fileStore.content(file)
+        if (js.isNullOrBlank()) {
+            return ScriptLoadResult(
+                null,
+                AppLocaleManager.getString(R.string.ui_file_is_empty_or_could_not_be_read, file.name)
+            )
+        }
+        val worker = nextWorker()
+        val c = runCatching {
+            withTimeoutOrNull(SCRIPT_EVAL_TIMEOUT_MS) {
+                withContext(worker.dispatcher) { QuickJSContext.create() }
+            }
+        }.getOrNull() ?: run {
+            worker.replace()
+            return ScriptLoadResult(
+                null,
+                AppLocaleManager.getString(
+                    R.string.ui_could_not_create_quickjs_engine_device_abi_may_be_unsupported,
+                    file.name
+                )
+            )
+        }
+        liveCtxs.add(c)
+
+        val srcs = try {
+            withTimeoutOrNull(SCRIPT_EVAL_TIMEOUT_MS) {
+                withContext(worker.dispatcher) {
+                    injectLxShim(c)
+                    evalCtx(c, js, file.name)
+                    // 少量 tick 让脚本内同步/微任务完成（原 20 次，收益很低）
+                    repeat(8) { runCatching { evalCtx(c, "null", "tick$it") } }
+                    // 允许 init 阶段用 setTimeout 异步注册音源：注册完成立即结束，最多等 800ms
+                    val deadline = System.currentTimeMillis() + SOURCE_REGISTER_WAIT_MS
+                    while (System.currentTimeMillis() < deadline) {
+                        val done = evalCtx(c, "__pixelplay_get_done_js()", "done")
+                        if (done is Number && done.toInt() == 1) break
+                        runCatching { evalCtx(c, "null", "tick") }
+                        delay(10)
+                    }
+                    readSourcesFromJs(c)
+                }
+            } ?: run {
+                worker.replace()
+                Log.e(TAG, "${file.name} eval timeout ${SCRIPT_EVAL_TIMEOUT_MS}ms, worker replaced")
+                liveCtxs.remove(c)
+                return ScriptLoadResult(
+                    null,
+                    AppLocaleManager.getString(
+                        R.string.ui_javascript_parsing_or_execution_failed,
+                        file.name, "Timeout", "eval timeout"
+                    )
+                )
+            }
+        } catch (t: Throwable) {
+            Log.e(TAG, "${file.name} eval FAILED", t)
+            runCatching { withTimeoutOrNull(2_000) { withContext(worker.dispatcher) { c.destroy() } } }
+            liveCtxs.remove(c)
+            return ScriptLoadResult(
+                null,
+                AppLocaleManager.getString(
+                    R.string.ui_javascript_parsing_or_execution_failed,
+                    file.name, t.javaClass.simpleName, t.message.toString()
+                )
+            )
+        }
+
+        if (srcs.isEmpty()) {
+            runCatching { withTimeoutOrNull(2_000) { withContext(worker.dispatcher) { c.destroy() } } }
+            liveCtxs.remove(c)
+            return ScriptLoadResult(
+                null,
+                AppLocaleManager.getString(
+                    R.string.ui_no_sources_registered_after_initialization_or_script_execution_failed,
+                    file.name
+                )
+            )
+        }
+        Log.d(TAG, "${file.name} sources=${srcs.keys}")
+        return ScriptLoadResult(
+            EngineInstance(
+                fileName = file.name,
+                ctx = c,
+                sources = srcs,
+                scriptInfo = parseScriptInfo(js, file.name),
+                versionName = extractVersion(js),
+                dispatcher = worker.dispatcher,
+                pendingCalls = ConcurrentHashMap(),
+                scriptRequests = ConcurrentHashMap(),
+                timeoutIds = ConcurrentHashMap(),
+            ),
+            null
+        )
     }
 
     fun isReady(): Boolean = inited && instances.isNotEmpty()
@@ -379,11 +511,14 @@ class LxJsEngine @Inject constructor(
                 inst.scriptRequests.values.forEach { it.cancel() }
                 inst.timeoutIds.values.forEach { it.cancel(false) }
             }
-            val ctxs = instances.values.map { it.ctx }
-            runBlocking(qjsDispatcher) {
-                ctxs.forEach { c ->
-                    runCatching { c.destroy() }
-                    liveCtxs.remove(c)
+            runBlocking {
+                instances.values.forEach { inst ->
+                    runCatching {
+                        withTimeoutOrNull(3_000) {
+                            withContext(inst.dispatcher) { inst.ctx.destroy() }
+                        }
+                    }
+                    liveCtxs.remove(inst.ctx)
                 }
             }
         }
@@ -442,9 +577,18 @@ class LxJsEngine @Inject constructor(
         )
         val targets = targetsFor(source)
         if (targets.isEmpty()) return LxSearchResult(list = emptyList(), isEnd = true, total = 0)
-        for (fileName in targets) {
-            val inst = instances[fileName] ?: continue
-            val raw = withContext(qjsDispatcher) { callJs(inst, "musicSearch", source, info, timeoutMs = 30000) }
+        // ⚡ 同源多脚本并行搜索：先成功先返回（原串行 + 单次 30s，慢脚本会把整页拖死）
+        val raws = coroutineScope {
+            targets.map { fileName ->
+                async {
+                    val inst = instances[fileName] ?: return@async null
+                    runCatching {
+                        callJs(inst, "musicSearch", source, info, timeoutMs = MUSIC_SEARCH_CALL_TIMEOUT_MS)
+                    }.getOrNull()
+                }
+            }.map { runCatching { it.await() }.getOrNull() }
+        }
+        raws.forEach { raw ->
             val result = parseSearchResult(raw)
             if (result.list.isNotEmpty()) return result
         }
@@ -466,26 +610,64 @@ class LxJsEngine @Inject constructor(
         val targets = targetsFor(source)
         if (targets.isEmpty()) return null
         val startTime = System.currentTimeMillis()
-        // ⚡ 单脚本 musicUrl 超时从 60s 降到 20s：某个脚本卡死/超时不应阻塞整条
-        //    音质链与其它脚本。超时后立即尝试下一个脚本/下一个音质，用户点歌
-        //    不会出现长时间"正在解析音源…"。
-        for (fileName in targets) {
-            val inst = instances[fileName] ?: continue
-            val raw = try {
-                withContext(qjsDispatcher) { callJs(inst, "musicUrl", source, info, timeoutMs = 20000) }
-            } catch (t: Throwable) {
-                Log.e(TAG, "getPlayUrl $source failed (${inst.fileName})", t)
-                null
+        // ⚡ 同源多脚本并行竞赛：每个脚本 8s 超时、整次取链 10s 总预算；先成功先返回。
+        //    原实现串行 × 20s，多脚本音源一次取链就能卡到分钟级。
+        val winner: Pair<EngineInstance, String>? = coroutineScope {
+            val jobs = targets.mapNotNull { fileName ->
+                val inst = instances[fileName] ?: return@mapNotNull null
+                if (isCoolingDown(inst)) return@mapNotNull null
+                async {
+                    val raw = runCatching {
+                        callJs(inst, "musicUrl", source, info, timeoutMs = MUSIC_URL_CALL_TIMEOUT_MS)
+                    }.getOrNull()
+                    val url = processUrlResult(raw)
+                    if (url != null) {
+                        markSuccess(inst)
+                        inst to url
+                    } else {
+                        markFailure(inst)
+                        null
+                    }
+                }
             }
-            val result = processUrlResult(raw)
-            if (result != null) {
-                Log.d(TAG, "getPlayUrl $source/$quality via ${inst.fileName} -> ${result.take(120)} (${System.currentTimeMillis() - startTime}ms)")
-                return result
+            if (jobs.isEmpty()) return@coroutineScope null
+            val first = CompletableDeferred<Pair<EngineInstance, String>?>()
+            jobs.forEach { job ->
+                launch { job.await()?.let { first.complete(it) } }
             }
+            val result = withTimeoutOrNull(PLAY_URL_TOTAL_TIMEOUT_MS) { first.await() }
+            jobs.forEach { it.cancel() }
+            result
+        }
+        if (winner != null) {
+            Log.d(
+                TAG,
+                "getPlayUrl $source/$quality via ${winner.first.fileName} -> ${winner.second.take(120)} " +
+                    "(${System.currentTimeMillis() - startTime}ms)"
+            )
+            return winner.second
         }
         val songId = (songInfo["id"] ?: songInfo["songmid"] ?: songInfo["hash"]).toString()
         Log.w(TAG, "getPlayUrl $source/$quality all scripts failed (songId=$songId, ${System.currentTimeMillis() - startTime}ms)")
         return null
+    }
+
+    // ── 脚本健康度（熔断）────────────────────────────────────────────────
+
+    private fun isCoolingDown(inst: EngineInstance): Boolean =
+        inst.cooldownUntilMs > System.currentTimeMillis()
+
+    private fun markSuccess(inst: EngineInstance) {
+        inst.consecutiveFailures.set(0)
+        inst.cooldownUntilMs = 0L
+    }
+
+    private fun markFailure(inst: EngineInstance) {
+        val n = inst.consecutiveFailures.incrementAndGet()
+        if (n >= FAILURE_THRESHOLD) {
+            inst.cooldownUntilMs = System.currentTimeMillis() + COOLDOWN_MS
+            Log.w(TAG, "${inst.fileName} cooling down ${COOLDOWN_MS}ms after $n consecutive failures")
+        }
     }
 
     /**
@@ -506,9 +688,7 @@ class LxJsEngine @Inject constructor(
         for (fileName in targets) {
             val inst = instances[fileName] ?: continue
             val raw = runCatching {
-                withContext(qjsDispatcher) {
-                    callJs(inst, "lyric", source, info, timeoutMs = 15_000)
-                }
+                callJs(inst, "lyric", source, info, timeoutMs = LYRIC_CALL_TIMEOUT_MS)
             }.getOrNull() ?: continue
             val lyric = processLyricResult(raw)
             if (lyric != null && lyric.isUsable()) return lyric
@@ -532,9 +712,7 @@ class LxJsEngine @Inject constructor(
         for (fileName in targets) {
             val inst = instances[fileName] ?: continue
             val raw = runCatching {
-                withContext(qjsDispatcher) {
-                    callJs(inst, "pic", source, info, timeoutMs = 15_000)
-                }
+                callJs(inst, "pic", source, info, timeoutMs = LYRIC_CALL_TIMEOUT_MS)
             }.getOrNull() ?: continue
             val pic = processUrlResult(raw)
             if (!pic.isNullOrBlank()) return pic
@@ -581,15 +759,18 @@ class LxJsEngine @Inject constructor(
         inst.pendingCalls[callId] = deferred
         try {
             val infoJson = JSONObject(info).toString()
-            withCtx(inst.ctx) {
-                val global = inst.ctx.globalObject
-                global.setProperty("__px_arg_action", action)
-                global.setProperty("__px_arg_source", source)
-                global.setProperty("__px_arg_info", infoJson)
-                inst.ctx.evaluate(
-                    "__pixelplay_call_js(${jsStr(callId)}, __px_arg_action, __px_arg_source, JSON.parse(__px_arg_info));",
-                    "call"
-                )
+            // QuickJS 上下文必须在固定的工作线程上操作（不同脚本分布在不同线程并行执行）
+            withContext(inst.dispatcher) {
+                withCtx(inst.ctx) {
+                    val global = inst.ctx.globalObject
+                    global.setProperty("__px_arg_action", action)
+                    global.setProperty("__px_arg_source", source)
+                    global.setProperty("__px_arg_info", infoJson)
+                    inst.ctx.evaluate(
+                        "__pixelplay_call_js(${jsStr(callId)}, __px_arg_action, __px_arg_source, JSON.parse(__px_arg_info));",
+                        "call"
+                    )
+                }
             }
             val raw = try {
                 withTimeout(timeoutMs) { deferred.await() }
@@ -696,7 +877,9 @@ class LxJsEngine @Inject constructor(
             val owner = currentCtx.get()
             val future = timerExecutor.schedule({
                 if (owner == null || owner !in liveCtxs) return@schedule
-                scope.launch(qjsDispatcher) {
+                // 定时器回调必须回到该上下文固定的执行线程
+                val dispatcher = instanceOf(owner)?.dispatcher ?: return@schedule
+                scope.launch(dispatcher) {
                     if (owner !in liveCtxs) return@launch
                     runCatching { evalCtx(owner, "__pixelplay_fire_timeout($id)", "timeout") }
                 }
@@ -924,7 +1107,8 @@ class LxJsEngine @Inject constructor(
     }
 
     private fun deliverToJs(c: QuickJSContext, jsCode: String) {
-        scope.launch(qjsDispatcher) {
+        val dispatcher = instanceOf(c)?.dispatcher ?: return
+        scope.launch(dispatcher) {
             if (c !in liveCtxs) return@launch
             runCatching { evalCtx(c, jsCode, "native_event") }
                 .onFailure { Log.w(TAG, "deliverToJs failed: ${it.message}") }
@@ -1075,7 +1259,6 @@ class LxJsEngine @Inject constructor(
 
     private fun jsStr(s: String): String = JSONObject.quote(s)
 
-    companion object { private const val TAG = "LxJsEngine" }
 
     // ── shim：对齐 lx-music-mobile 的 user-api-preload.js ─────────────────
 

@@ -52,6 +52,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
@@ -309,6 +310,8 @@ class DualPlayerEngine @Inject constructor(
     //    见 restoreMasterVolumeAfterAbortedTransition()。
     private var preTransitionMasterVolume: Float? = null
     private var preResolutionJob: Job? = null
+    /** 播放尾部（剩余 ≤10s）再次确认下一首 URL 的预取任务（对齐 lx-music 的预取策略） */
+    private var tailPrefetchJob: Job? = null
     private var queueSnapshot: List<MediaItem> = emptyList()
     private var activeWindowStartIndex = 0
     private var activePlayerUsesWindowedQueue = false
@@ -652,6 +655,11 @@ class DualPlayerEngine @Inject constructor(
                         startColdStartFadeIn()
                     }
                 }
+                startTailPrefetchLoop()
+            } else {
+                // 暂停即停止尾部预取，省电省流量；恢复播放会重新启动
+                tailPrefetchJob?.cancel()
+                tailPrefetchJob = null
             }
         }
 
@@ -2570,6 +2578,33 @@ class DualPlayerEngine @Inject constructor(
         lastKnownJellyfinPort = 0
         lastKnownGDrivePort = 0
         lastKnownTelegramPort = 0
+    }
+
+    /**
+     * 播放尾部预取（对齐 lx-music）：剩余 ≤10s 时再确认一次下一首的解析结果，
+     * URL 已在缓存时立即返回（零网络）；切歌初期预解析失败/链接已过期的情况下，
+     * 这一步能让自动切歌不再卡在「正在解析音源…」。
+     */
+    private fun startTailPrefetchLoop() {
+        if (!::playerA.isInitialized) return
+        if (tailPrefetchJob?.isActive == true) return
+        tailPrefetchJob = scope.launch {
+            while (isActive) {
+                delay(3_000)
+                if (!::playerA.isInitialized) break
+                if (!playerA.isPlaying) continue
+                val duration = playerA.duration
+                val position = playerA.currentPosition
+                if (duration <= 0L) continue
+                val remaining = duration - position
+                if (remaining !in 1..10_000L) continue
+                val index = playerA.currentMediaItemIndex
+                if (index == C.INDEX_UNSET || index + 1 >= playerA.mediaItemCount) continue
+                val nextUri = playerA.getMediaItemAt(index + 1).localConfiguration?.uri ?: continue
+                if (nextUri.scheme !in CLOUD_PROXY_SCHEMES) continue
+                runCatching { resolveCloudUri(nextUri) }
+            }
+        }
     }
 
     suspend fun resolveCloudUri(uri: Uri, preferredSource: String? = null): Uri = withContext(Dispatchers.IO) {

@@ -3270,7 +3270,7 @@ private fun FullPlayerExpressiveContent(
                     },
                     modifier = Modifier.fillMaxWidth().clipToBounds(),
                     // Rhythm：merge 模式（默认）标题/歌手居中，非 merge 左对齐
-                    contentAlignment = if (playerMergeControls) Alignment.CenterHorizontally else Alignment.CenterStart,
+                    contentAlignment = if (playerMergeControls) Alignment.Center else Alignment.CenterStart,
                     label = "ExpressiveSongInfoSlide"
                 ) { targetSong ->
                     Column {

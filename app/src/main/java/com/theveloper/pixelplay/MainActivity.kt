@@ -1768,6 +1768,8 @@ class MainActivity : ComponentActivity() {
                 //   面板带一个覆盖整个裁剪区的 clickable（折叠态点击=展开播放器），一旦容器延伸
                 //   到底部导航栏上方，导航栏的点击会被整体吃掉（表现为「竖屏导航栏点不动」）。
                 //   只有底栏真正隐藏时才放行下移余量——此时底栏已移出屏幕，迷你条下移不会互相遮挡。
+                // ⚡ CompositionLocal 必须在组合期读取，不能在 remember 的计算块里调用
+                val miniPlayerSlotPx = with(density) { LocalMiniPlayerSlotHeight.current.toPx() }
                 val collapsedBaseClipHeightPx = remember(
                     showPlayerContentInitially,
                     shouldHideMiniPlayer,
@@ -1778,12 +1780,13 @@ class MainActivity : ComponentActivity() {
                     miniPlayerBottomMarginDp,
                     containerHeight,
                     isLandscape,
-                    sheetCollapsedTargetY
+                    sheetCollapsedTargetY,
+                    miniPlayerSlotPx
                 ) {
                     val shouldShowMiniPlayer = showPlayerContentInitially && !shouldHideMiniPlayer &&
                             currentRoute !in setOf(Screen.NavBarCrRad.route)
                     if (shouldShowMiniPlayer) {
-                        (sheetCollapsedTargetY + with(density) { LocalMiniPlayerSlotHeight.current.toPx() })
+                        (sheetCollapsedTargetY + miniPlayerSlotPx)
                             .coerceAtLeast(0f)
                     } else {
                         with(density) { containerHeight.toPx() }

@@ -793,14 +793,19 @@ class LxMusicViewModel @Inject constructor(
      * - 其他落雪音源：走 JS 引擎 engine.search 搜索该源，不支持搜索时返回空结果
      */
     private suspend fun searchBySource(source: String, kw: String, page: Int, pageSize: Int): LxSearchResult {
+        // ⚡ 脚本是否显式声明支持搜索：lx 官方协议里自定义脚本只保证 musicUrl/lyric/pic，
+        //   没声明 musicSearch 的脚本调用必然超时——此前每次白等 30s 才回退。
+        fun supportsJsSearch(key: String): Boolean =
+            engine.getSources()[key]?.actions?.contains("musicSearch") == true
+
         val result = when {
             // 网易云：保持原版官方搜索，不经过 JS 引擎
             source == "wy" || source == "all" -> searchApi.search(kw, page = page, pageSize = pageSize)
             // 内置源：落雪同款官方搜索
             builtInSourceSearchApi.isSupported(source) -> {
                 val builtIn = builtInSourceSearchApi.search(source, kw, page, pageSize)
-                // 内置源连续失败返回空时（如 QQ 间歇限流），fallback 到 JS 引擎的该源实现，双保险
-                if (builtIn.list.isEmpty() && builtIn.total == 0 && page == 1) {
+                // 内置源连续失败返回空时（如 QQ 间歇限流），fallback 到 JS 引擎的该源实现（仅当脚本声明支持搜索）
+                if (builtIn.list.isEmpty() && builtIn.total == 0 && page == 1 && supportsJsSearch(source)) {
                     runCatching { engine.search(kw, source, page, pageSize) }
                         .getOrNull()
                         ?.takeIf { it.list.isNotEmpty() } ?: builtIn
@@ -808,8 +813,12 @@ class LxMusicViewModel @Inject constructor(
                     builtIn
                 }
             }
-            // 落雪源：直接走 JS 引擎搜索（不再回退网易云，点击哪个源就搜哪个源）
-            else -> engine.search(kw, source, page, pageSize)
+            // 落雪源：仅脚本声明支持搜索时走 JS 引擎，否则直接返回空（不再白等 10s 超时）
+            else -> if (supportsJsSearch(source)) {
+                engine.search(kw, source, page, pageSize)
+            } else {
+                LxSearchResult(list = emptyList(), isEnd = true, total = 0)
+            }
         }
         // 统一为每条结果标记音源，供播放时选对音源、UI 提示用
         return result.copy(list = result.list.map { it.copy(source = source) })
