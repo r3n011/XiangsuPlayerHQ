@@ -468,14 +468,15 @@ fun PlaylistDetailScreen(
                     .fillMaxSize()
                     .padding(top = innerPadding.calculateTopPadding())
             ) {
-                val actionButtonsHeight = 42.dp
+                val actionButtonsHeight = 40.dp
                 val playbackControlBottomPadding = if (isFolderPlaylist) 8.dp else 6.dp
-                // ⚡ 播放/随机/下载按钮高 76dp，容器必须同高再留底边距；
-                //    此前 Row 固定 62dp 导致按钮被裁切、与下方操作行叠在一起（视觉很乱）。
+                // ⚡ 顶部主操作区：播放 / 随机 / 批量下载统一 52dp 高（原 76dp 过高，
+                //    挤占下方列表高度）。容器只比按钮多出底部间距，不再预留多余空间。
+                val playbackButtonHeight = 52.dp
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(76.dp + playbackControlBottomPadding)
+                        .height(playbackButtonHeight + playbackControlBottomPadding)
                         .padding(horizontal = 20.dp)
                         .padding(bottom = playbackControlBottomPadding),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -493,7 +494,7 @@ fun PlaylistDetailScreen(
                         },
                         modifier = Modifier
                             .weight(1f)
-                            .height(76.dp),
+                            .height(playbackButtonHeight),
                         enabled = localReorderableSongs.isNotEmpty(),
                         shape = AbsoluteSmoothCornerShape(
                             cornerRadiusTL = 60.dp,
@@ -510,15 +511,15 @@ fun PlaylistDetailScreen(
                         Icon(
                             Icons.Rounded.PlayArrow,
                             contentDescription = stringResource(R.string.cd_play),
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(18.dp)
                         )
                         Spacer(Modifier.size(ButtonDefaults.IconSpacing))
                         TightWrapText(
                                 text = playItLabel,
                                 modifier = Modifier.padding(end = 4.dp),
                                 overflow = TextOverflow.Ellipsis,
-                                maxLines = 2,
-                                lineHeight = 20.sp
+                                maxLines = 1,
+                                lineHeight = 18.sp
                             )
                     }
                     FilledTonalButton(
@@ -534,7 +535,7 @@ fun PlaylistDetailScreen(
                         },
                         modifier = Modifier
                             .weight(1f)
-                            .height(76.dp),
+                            .height(playbackButtonHeight),
                         enabled = localReorderableSongs.isNotEmpty(),
                         shape = AbsoluteSmoothCornerShape(
                             cornerRadiusTL = 14.dp,
@@ -558,8 +559,8 @@ fun PlaylistDetailScreen(
                                 text = shuffleLabel,
                                 modifier = Modifier.padding(end = 4.dp),
                                 overflow = TextOverflow.Ellipsis,
-                                maxLines = 2,
-                                lineHeight = 20.sp
+                                maxLines = 1,
+                                lineHeight = 18.sp
                             )
                     }
 
@@ -570,19 +571,11 @@ fun PlaylistDetailScreen(
                         localReorderableSongs.any { playerViewModel.isOnlineSong(it) }
                     }
                     if (hasOnlineSongs) {
+                        // ⚡ 批量下载：纯圆形按钮，52dp 高（与播放/随机按钮齐平），不再用异形大块
                         FilledTonalIconButton(
                             onClick = { downloadSelectionSongs = localReorderableSongs },
-                            modifier = Modifier.size(76.dp),
-                            shape = AbsoluteSmoothCornerShape(
-                                cornerRadiusTL = 14.dp,
-                                smoothnessAsPercentTL = 60,
-                                cornerRadiusTR = 60.dp,
-                                smoothnessAsPercentTR = 60,
-                                cornerRadiusBR = 60.dp,
-                                smoothnessAsPercentBR = 60,
-                                cornerRadiusBL = 14.dp,
-                                smoothnessAsPercentBL = 60
-                            )
+                            modifier = Modifier.size(playbackButtonHeight),
+                            shape = CircleShape
                         ) {
                             Icon(
                                 imageVector = Icons.Rounded.Download,
@@ -645,7 +638,7 @@ fun PlaylistDetailScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(start = 20.dp, end = 20.dp, bottom = 8.dp, top = 2.dp),
+                            .padding(start = 20.dp, end = 20.dp, bottom = 6.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -932,7 +925,7 @@ fun PlaylistDetailScreen(
                                 .background(color = MaterialTheme.colorScheme.surfaceContainerHigh),
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                             contentPadding = PaddingValues(
-                                top = 12.dp,
+                                top = 8.dp,
                                 bottom = LocalMiniPlayerSlotHeight.current + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp,
                                 end = 0.dp
                             ).let {
