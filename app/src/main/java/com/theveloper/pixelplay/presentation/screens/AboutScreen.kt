@@ -853,6 +853,10 @@ private fun CommunitySignalsRow() {
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
+        // ⚡ 可点击的「开源」徽标会被 Material 最小触控尺寸撑到 48dp，
+        //    不可点击的两个徽标只有约 31dp；FlowRow 默认顶部对齐会让「开源」看起来偏下。
+        //    统一按垂直中心对齐，三枚徽标重新回到同一条基线上。
+        itemVerticalAlignment = Alignment.CenterVertically,
     ) {
         labels.forEach { (label, icon, onClick) ->
             val content: @Composable () -> Unit = {
