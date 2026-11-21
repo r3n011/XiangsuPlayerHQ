@@ -557,6 +557,11 @@ class UserPreferencesRepository @Inject constructor(
         val PLAYER_STYLE = stringPreferencesKey("player_style")
         val PLAYER_ACCENT_BACKGROUND = booleanPreferencesKey("player_accent_background")
         val PLAYER_MERGE_CONTROLS = booleanPreferencesKey("player_merge_controls")
+
+        // ⚡ Expressive 图形库：MaterialShapes ID（默认 Rhythm 同款）
+        val EXPRESSIVE_PLAYER_ART_SHAPE = stringPreferencesKey("expressive_player_art_shape")
+        val EXPRESSIVE_PLAYER_CONTROLS_SHAPE = stringPreferencesKey("expressive_player_controls_shape")
+        val EXPRESSIVE_MINI_PLAYER_SHAPE = stringPreferencesKey("expressive_mini_player_shape")
     }
 
     // ─── Private helpers ─────────────────────────────────────────────────────
@@ -1000,6 +1005,43 @@ class UserPreferencesRepository @Inject constructor(
 
     suspend fun setPlayerStyle(style: PlayerStyle) {
         dataStore.edit { it[PreferencesKeys.PLAYER_STYLE] = style.storageKey }
+    }
+
+    // ─── Expressive 图形库 ────────────────────────────────────────────────────
+    // MaterialShapes ID 存在 DataStore；非法/旧值在读取时回落到默认形状。
+
+    val expressivePlayerArtShapeFlow: Flow<String> =
+        pref { it[PreferencesKeys.EXPRESSIVE_PLAYER_ART_SHAPE] ?: "BUN" }
+
+    val expressivePlayerControlsShapeFlow: Flow<String> =
+        pref { it[PreferencesKeys.EXPRESSIVE_PLAYER_CONTROLS_SHAPE] ?: "COOKIE_12" }
+
+    val expressiveMiniPlayerShapeFlow: Flow<String> =
+        pref { it[PreferencesKeys.EXPRESSIVE_MINI_PLAYER_SHAPE] ?: "COOKIE_4" }
+
+    suspend fun setExpressivePlayerArtShape(shapeId: String) {
+        dataStore.edit { it[PreferencesKeys.EXPRESSIVE_PLAYER_ART_SHAPE] = shapeId }
+    }
+
+    suspend fun setExpressivePlayerControlsShape(shapeId: String) {
+        dataStore.edit { it[PreferencesKeys.EXPRESSIVE_PLAYER_CONTROLS_SHAPE] = shapeId }
+    }
+
+    suspend fun setExpressiveMiniPlayerShape(shapeId: String) {
+        dataStore.edit { it[PreferencesKeys.EXPRESSIVE_MINI_PLAYER_SHAPE] = shapeId }
+    }
+
+    /** 一次性应用整套图形预设（播放器封面 / 控制按钮 / 迷你播放器封面）。 */
+    suspend fun applyExpressiveShapePreset(
+        playerArtShape: String,
+        playerControlsShape: String,
+        miniPlayerShape: String
+    ) {
+        dataStore.edit { prefs ->
+            prefs[PreferencesKeys.EXPRESSIVE_PLAYER_ART_SHAPE] = playerArtShape
+            prefs[PreferencesKeys.EXPRESSIVE_PLAYER_CONTROLS_SHAPE] = playerControlsShape
+            prefs[PreferencesKeys.EXPRESSIVE_MINI_PLAYER_SHAPE] = miniPlayerShape
+        }
     }
 
     // ⚡ Apple Music 动态封面（Canvas）：开启后按 歌名+歌手(+专辑) 在线检索动态视频封面；

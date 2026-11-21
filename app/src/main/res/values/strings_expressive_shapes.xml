@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Expressive player shape library -->
+    <string name="setcat_expressive_shapes_group">"图形库"</string>
+    <string name="setcat_expressive_shape_player_art">"播放器封面"</string>
+    <string name="setcat_expressive_shape_player_controls">"控制按钮"</string>
+    <string name="setcat_expressive_shape_mini_player">"迷你播放器封面"</string>
+    <string name="setcat_expressive_shape_picker_title">"选择图形"</string>
+    <string name="setcat_expressive_shape_picker_desc">"选择 Material 3 Expressive 形状，立即应用到播放器"</string>
+    <string name="setcat_expressive_shape_preset">"图形预设"</string>
+    <string name="setcat_expressive_shape_preset_desc">"一键切换整套播放器 / 控制键 / 迷你播放器形状"</string>
+    <string name="shape_preset_rhythm">"Rhythm 默认"</string>
+    <string name="shape_preset_soft">"柔和"</string>
+    <string name="shape_preset_geometric">"几何"</string>
+    <string name="shape_preset_floral">"花卉"</string>
+    <string name="shape_name_circle">"圆形"</string>
+    <string name="shape_name_square">"方形"</string>
+    <string name="shape_name_pentagon">"五边形"</string>
+    <string name="shape_name_diamond">"菱形"</string>
+    <string name="shape_name_flower">"花朵"</string>
+    <string name="shape_name_clover_4">"四叶草"</string>
+    <string name="shape_name_clover_8">"八叶草"</string>
+    <string name="shape_name_heart">"爱心"</string>
+    <string name="shape_name_boom">"爆炸"</string>
+    <string name="shape_name_soft_boom">"柔和爆炸"</string>
+    <string name="shape_name_cookie_4">"曲奇 4 边"</string>
+    <string name="shape_name_cookie_6">"曲奇 6 边"</string>
+    <string name="shape_name_cookie_9">"曲奇 9 边"</string>
+    <string name="shape_name_cookie_12">"曲奇 12 边"</string>
+    <string name="shape_name_bun">"小圆面包"</string>
+    <string name="shape_name_gem">"宝石"</string>
+    <string name="shape_name_pixel_circle">"像素圆"</string>
+</resources>

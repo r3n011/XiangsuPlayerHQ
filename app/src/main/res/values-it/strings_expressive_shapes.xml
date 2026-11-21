@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Expressive player shape library -->
+    <string name="setcat_expressive_shapes_group">"Libreria forme"</string>
+    <string name="setcat_expressive_shape_player_art">"Copertina lettore"</string>
+    <string name="setcat_expressive_shape_player_controls">"Pulsanti di controllo"</string>
+    <string name="setcat_expressive_shape_mini_player">"Copertina mini lettore"</string>
+    <string name="setcat_expressive_shape_picker_title">"Scegli una forma"</string>
+    <string name="setcat_expressive_shape_picker_desc">"Scegli una forma Material 3 Expressive; viene applicata subito"</string>
+    <string name="setcat_expressive_shape_preset">"Preimpostazione forme"</string>
+    <string name="setcat_expressive_shape_preset_desc">"Applica un set di forme a lettore, controlli e mini lettore"</string>
+    <string name="shape_preset_rhythm">"Predefinito Rhythm"</string>
+    <string name="shape_preset_soft">"Morbido"</string>
+    <string name="shape_preset_geometric">"Geometrico"</string>
+    <string name="shape_preset_floral">"Floreale"</string>
+    <string name="shape_name_circle">"Cerchio"</string>
+    <string name="shape_name_square">"Quadrato"</string>
+    <string name="shape_name_pentagon">"Pentagono"</string>
+    <string name="shape_name_diamond">"Rombo"</string>
+    <string name="shape_name_flower">"Fiore"</string>
+    <string name="shape_name_clover_4">"Quadrifoglio"</string>
+    <string name="shape_name_clover_8">"Quadrifoglio a 8 foglie"</string>
+    <string name="shape_name_heart">"Cuore"</string>
+    <string name="shape_name_boom">"Esplosione"</string>
+    <string name="shape_name_soft_boom">"Esplosione morbida"</string>
+    <string name="shape_name_cookie_4">"Biscotto 4"</string>
+    <string name="shape_name_cookie_6">"Biscotto 6"</string>
+    <string name="shape_name_cookie_9">"Biscotto 9"</string>
+    <string name="shape_name_cookie_12">"Biscotto 12"</string>
+    <string name="shape_name_bun">"Panino"</string>
+    <string name="shape_name_gem">"Gemma"</string>
+    <string name="shape_name_pixel_circle">"Cerchio pixel"</string>
+</resources>

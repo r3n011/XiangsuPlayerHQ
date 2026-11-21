@@ -53,6 +53,7 @@ import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
@@ -312,6 +313,8 @@ class DualPlayerEngine @Inject constructor(
     private var preResolutionJob: Job? = null
     /** 播放尾部（剩余 ≤10s）再次确认下一首 URL 的预取任务（对齐 lx-music 的预取策略） */
     private var tailPrefetchJob: Job? = null
+    /** 电台启动看门狗：死流静默停在 IDLE/BUFFERING 时主动重连（不会抛 onPlayerError 的场景） */
+    private var radioWatchdogJob: Job? = null
     private var queueSnapshot: List<MediaItem> = emptyList()
     private var activeWindowStartIndex = 0
     private var activePlayerUsesWindowedQueue = false
@@ -429,7 +432,9 @@ class DualPlayerEngine @Inject constructor(
         if (!::playerA.isInitialized) return
         // 快照本身是"过渡开始那一刻"的真实音量（已含当时的 duck 系数），不能再乘一次
         // focusDuckScale，否则闪避会被重复施加。
-        playerA.volume = (snapshot ?: playerA.volume).coerceIn(0f, 1f)
+        // ⚡ 快照为 0（过渡恰好发生在淡入静音窗口内）时退回最近的可听见音量，避免永久静音。
+        val restore = (snapshot ?: playerA.volume).coerceIn(0f, 1f)
+        playerA.volume = if (restore > 0.001f) restore else lastAudibleVolume.coerceIn(0f, 1f)
     }
 
     private fun applyFocusDuck() {
@@ -645,6 +650,8 @@ class DualPlayerEngine @Inject constructor(
             if (isPlaying) {
                 lastPlayingAtMs = SystemClock.elapsedRealtime()
                 cancelAudioOffloadFallback()
+                // 已正常出声：取消电台启动看门狗
+                radioWatchdogJob?.cancel()
                 // ⚡ 冷启动首播淡入：掩盖 AudioTrack/HAL 首次打开的咔哒爆音。
                 //    电台直播流有自己的 fadeInVolume，这里让位避免两路同时拉音量。
                 if (pendingColdStartFadeIn && !transitionRunning) {
@@ -653,6 +660,24 @@ class DualPlayerEngine @Inject constructor(
                         pendingColdStartFadeIn = false
                     } else {
                         startColdStartFadeIn()
+                    }
+                }
+                // ⚡ 音量兜底看门狗：极端时序（过渡/闪避/AI 播报打断淡入、外部改写音量）下
+                //    可能出现「状态在播放但 master 音量被压在 0」→ 用户完全听不到声音。
+                //    600ms 后复查一次，仅在确认没有任何一方正在接管音量时恢复。
+                scope.launch {
+                    delay(600)
+                    if (!::playerA.isInitialized || !playerA.isPlaying) return@launch
+                    if (transitionRunning || focusDuckActive || companionDuckJob?.isActive == true) return@launch
+                    if (playerA.volume <= 0.001f) {
+                        val restore = lastAudibleVolume.coerceIn(0f, 1f)
+                        if (restore > 0.001f) {
+                            playerA.volume = restore
+                            Timber.tag("DualPlayerEngine").w(
+                                "Volume watchdog: restored silent player volume to $restore " +
+                                    "(media=${playerA.currentMediaItem?.mediaId})"
+                            )
+                        }
                     }
                 }
                 startTailPrefetchLoop()
@@ -783,6 +808,9 @@ class DualPlayerEngine @Inject constructor(
             cancelAudioOffloadFallback()
             // 根据当前媒体是否为广播电台流切换流式模式（禁用 audio offload）
             updateStreamingModeFor(mediaItem?.mediaId)
+            // ⚡ 电台启动看门狗：死流静默停在 IDLE/BUFFERING 时 12s 后主动重连
+            radioWatchdogJob?.cancel()
+            mediaItem?.mediaId?.takeIf { it.startsWith("radio://") }?.let(::scheduleRadioWatchdog)
             AdvancedPerformanceDiagnostics.recordEventIfEnabled(
                 type = AdvancedPerformanceDiagnostics.EventTypes.PLAYBACK,
                 name = "media_item_transition",
@@ -917,6 +945,9 @@ class DualPlayerEngine @Inject constructor(
                     if (pendingColdStartFadeIn && !transitionRunning) {
                         coldStartFadeTargetVolume = playerA.volume.takeIf { it > 0f }
                             ?: companionBaseVolume
+                        if (coldStartFadeTargetVolume > 0.001f) {
+                            lastAudibleVolume = coldStartFadeTargetVolume
+                        }
                         playerA.volume = 0f
                     }
                 }
@@ -1094,12 +1125,17 @@ class DualPlayerEngine @Inject constructor(
      */
     private var companionBaseVolume = 1f
 
+    /** 最近一次「可听见」的 master 音量（>0），用于修复音量被意外压在 0 的静音故障 */
+    @Volatile
+    private var lastAudibleVolume: Float = 1f
+
     /** Base volume chosen by the user (0..1), unaffected by temporary focus ducking. */
     val currentVolume: Float
         get() = companionBaseVolume
 
     fun setVolume(volume: Float) {
         companionBaseVolume = volume.coerceIn(0f, 1f)
+        if (companionBaseVolume > 0.001f) lastAudibleVolume = companionBaseVolume
         if (::playerA.isInitialized) {
             setPlayerVolume(playerA, companionBaseVolume)
         }
@@ -1931,27 +1967,8 @@ class DualPlayerEngine @Inject constructor(
 
             // 广播电台重试机制：http(s) 直播流断流/失败时按退避策略自动重连
             if (mediaId.startsWith("radio://")) {
-                val backoffMs = listOf(1_000L, 3_000L, 6_000L)[retries.coerceAtMost(2)]
-                Timber.tag("DualPlayerEngine").w(
-                    "Radio stream error, retrying in ${backoffMs}ms (attempt ${retries + 1}/$MAX_RETRIES_PER_ITEM)"
-                )
-                scope.launch(Dispatchers.Main) {
-                    delay(backoffMs)
-                    runCatching {
-                        if (!::playerA.isInitialized) return@runCatching
-                        if (playerA.currentMediaItem?.mediaId != mediaId) return@runCatching
-                        val currentIndex = player.currentMediaItemIndex
-                        player.stop()
-                        player.clearMediaItems()
-                        val snapshot = ensureQueueSnapshot()
-                        if (snapshot.isNotEmpty()) {
-                            player.setMediaItems(snapshot, currentIndex, 0L)
-                            player.prepare()
-                            player.playWhenReady = true
-                            Timber.tag("DualPlayerEngine").d("Radio retry: re-connected to $mediaId")
-                        }
-                    }
-                }
+                triggerRadioRecovery(mediaId)
+                return
             }
 
             // ⚡ 在线歌曲（落雪搜索/收藏等已保存到数据库的云端歌曲）：
@@ -2382,8 +2399,13 @@ class DualPlayerEngine @Inject constructor(
         scope.launch(Dispatchers.Main) {
             val startMs = SystemClock.uptimeMillis()
             while (true) {
-                // 播放期间切台：放弃本次淡入，不干扰新流的淡入
-                if (player.currentMediaItem?.mediaId != mediaId) return@launch
+                // 播放期间切台：放弃本次淡入，不干扰新流的淡入（但音量不能停在 0）
+                if (player.currentMediaItem?.mediaId != mediaId) {
+                    if (player.volume <= 0.001f) {
+                        player.volume = lastAudibleVolume.coerceIn(0f, 1f)
+                    }
+                    return@launch
+                }
                 if (player.volume >= 1f) break
                 val progress = ((SystemClock.uptimeMillis() - startMs) / 160f).coerceIn(0f, 1f)
                 player.volume = progress
@@ -2415,7 +2437,18 @@ class DualPlayerEngine @Inject constructor(
             while (true) {
                 // 播放器重建 / 切歌过渡 / 焦点闪避 / AI 淡入淡出接管音量时立即让位，避免互相拉扯
                 if (!::playerA.isInitialized || playerA !== player) return@launch
-                if (transitionRunning || focusDuckActive || companionDuckJob?.isActive == true) return@launch
+                if (transitionRunning || focusDuckActive || companionDuckJob?.isActive == true) {
+                    // ⚡ 让位时必须还原「冷启动压到 0」的音量：此前直接 return 会把音量永久留在 0，
+                    //    表现为播放状态正常但完全没有声音（重启续播才恢复）。
+                    if (player.volume <= 0.001f) {
+                        player.volume = lastAudibleVolume.coerceIn(0f, 1f)
+                        Timber.tag("DualPlayerEngine").w(
+                            "Cold start fade yielded (transition=%s duck=%s) and restored silent volume to %s",
+                            transitionRunning, focusDuckActive, lastAudibleVolume
+                        )
+                    }
+                    return@launch
+                }
                 // 音量被外部改写（ReplayGain 应用 / 引擎音量更新）：立即让位并保留外部值，
                 // 否则淡入会把 RG/用户音量覆盖成满音量 —— "突然一下非常大声"的来源
                 if (lastWritten >= 0f && kotlin.math.abs(player.volume - lastWritten) > 0.01f) {
@@ -2578,6 +2611,90 @@ class DualPlayerEngine @Inject constructor(
         lastKnownJellyfinPort = 0
         lastKnownGDrivePort = 0
         lastKnownTelegramPort = 0
+    }
+
+    /**
+     * 电台看门狗（对齐 RadioDroid 的快速重连）：切到电台后 12s 仍停在 IDLE/BUFFERING，
+     * 说明是「死流不抛错」的情况——主动走一次重连/换台，而不是让用户面对无声的播放器。
+     */
+    private fun scheduleRadioWatchdog(mediaId: String) {
+        radioWatchdogJob?.cancel()
+        radioWatchdogJob = scope.launch {
+            delay(12_000)
+            if (!::playerA.isInitialized) return@launch
+            if (playerA.currentMediaItem?.mediaId != mediaId) return@launch
+            val state = playerA.playbackState
+            val stuck = (state == Player.STATE_IDLE || state == Player.STATE_BUFFERING) && playerA.playWhenReady
+            if (stuck) {
+                Timber.tag("DualPlayerEngine").w("Radio watchdog: $mediaId stuck in state=$state, forcing recovery")
+                triggerRadioRecovery(mediaId)
+            }
+        }
+    }
+
+    /**
+     * 电台重连：按 700ms/1.5s/3s 退避重连；离线时最多等 30s 网络恢复；
+     * 第 2 次起在 http/https 之间切换（部分台只有其中一个可用）；
+     * 连续失败达到上限后自动切下一个电台。
+     */
+    private fun triggerRadioRecovery(mediaId: String) {
+        if (!::playerA.isInitialized) return
+        val retries = mediaItemRetryCount.getOrDefault(mediaId, 0)
+        if (retries >= MAX_RETRIES_PER_ITEM) {
+            mediaItemRetryCount.remove(mediaId)
+            Timber.tag("DualPlayerEngine").w("Radio max retries reached for $mediaId, skipping to next")
+            runCatching {
+                if (playerA.hasNextMediaItem()) {
+                    playerA.seekToNextMediaItem()
+                    playerA.prepare()
+                    playerA.playWhenReady = true
+                }
+            }
+            return
+        }
+        mediaItemRetryCount[mediaId] = retries + 1
+        val attempt = retries.coerceAtMost(2)
+        scope.launch(Dispatchers.Main) {
+            if (!connectivityStateHolder.isOnline.value) {
+                val recovered = withTimeoutOrNull(30_000) {
+                    connectivityStateHolder.isOnline.first { it }
+                }
+                if (recovered != true) {
+                    Timber.tag("DualPlayerEngine").w("Radio offline >30s, stop retrying $mediaId")
+                    return@launch
+                }
+            }
+            delay(listOf(700L, 1_500L, 3_000L)[attempt])
+            runCatching {
+                if (!::playerA.isInitialized) return@runCatching
+                if (playerA.currentMediaItem?.mediaId != mediaId) return@runCatching
+                val currentIndex = playerA.currentMediaItemIndex
+                val snapshot = ensureQueueSnapshot().map { item ->
+                    if (item.mediaId != mediaId || attempt == 0) {
+                        item
+                    } else {
+                        val uri = item.localConfiguration?.uri ?: return@map item
+                        val scheme = uri.scheme ?: return@map item
+                        val swapped = when (scheme) {
+                            "https" -> "http"
+                            "http" -> "https"
+                            else -> return@map item
+                        }
+                        item.buildUpon().setUri(uri.buildUpon().scheme(swapped).build()).build()
+                    }
+                }
+                playerA.stop()
+                playerA.clearMediaItems()
+                if (snapshot.isNotEmpty()) {
+                    playerA.setMediaItems(snapshot, currentIndex, 0L)
+                    playerA.prepare()
+                    playerA.playWhenReady = true
+                    Timber.tag("DualPlayerEngine").d(
+                        "Radio retry: re-connected (attempt=${attempt + 1}, alternateScheme=${attempt > 0})"
+                    )
+                }
+            }
+        }
     }
 
     /**

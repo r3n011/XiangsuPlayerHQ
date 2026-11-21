@@ -105,6 +105,11 @@ internal fun BoxScope.UnifiedPlayerMiniAndFullLayers(
 
     // ⚡ 迷你播放条样式（设置 → 外观 → 迷你播放条）
     val miniPlayerStyleName by playerViewModel.miniPlayerStyle.collectAsStateWithLifecycle()
+    // ⚡ 图形库：Expressive 迷你播放器封面形状
+    val miniPlayerShapeId by playerViewModel.expressiveMiniPlayerShape.collectAsStateWithLifecycle()
+    val miniPlayerArtShape = remember(miniPlayerShapeId) {
+        ExpressiveShapes.shapeFor(miniPlayerShapeId, ExpressiveShapes.DEFAULT_MINI_PLAYER)
+    }
 
     miniPlayerScheme?.let { readyScheme ->
         CompositionLocalProvider(
@@ -184,7 +189,8 @@ internal fun BoxScope.UnifiedPlayerMiniAndFullLayers(
                     currentPositionProvider = currentPositionProvider,
                     totalDurationProvider = { infrequentPlayerState.totalDuration },
                     expansionFractionProvider = expansionFractionProvider,
-                    miniPlayerStyle = miniPlayerStyleName
+                    miniPlayerStyle = miniPlayerStyleName,
+                    miniPlayerArtShape = miniPlayerArtShape
                 )
             }
         }

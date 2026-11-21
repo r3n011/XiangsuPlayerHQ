@@ -77,6 +77,9 @@ class RadioBrowserApi @Inject constructor(
     @Volatile private var countriesCache: List<RadioCountry>? = null
     @Volatile private var countriesCacheTime = 0L
 
+    /** 按 path 的通用响应缓存（LRU 32 条，TTL 同 [CACHE_TTL_MILLIS]） */
+    private val pathCache = object : android.util.LruCache<String, Pair<String, Long>>(32) {}
+
     private fun endpoints(path: String): List<String> =
         SERVERS.map { "https://$it$path" }
 
@@ -109,6 +112,15 @@ class RadioBrowserApi @Inject constructor(
      * 全部镜像失败时返回 null，由调用方回退到缓存/空列表。
      */
     private suspend fun getJsonArray(path: String): JSONArray? = withContext(Dispatchers.IO) {
+        // ⚡ 通用内存缓存（按 path，5 分钟）：搜索/国家列表返回页面时秒开，
+        //    弱网抖动时也有上一份数据兜底（热门列表另有专用缓存）。
+        val nowMs = System.currentTimeMillis()
+        synchronized(pathCache) { pathCache.get(path) }?.let { (body, savedAt) ->
+            if (nowMs - savedAt < CACHE_TTL_MILLIS) {
+                runCatching { JSONArray(body) }.getOrNull()?.let { return@withContext it }
+            }
+        }
+
         val deferreds = endpoints(path).map { url ->
             async {
                 try {
@@ -125,7 +137,12 @@ class RadioBrowserApi @Inject constructor(
         while (remaining.isNotEmpty()) {
             // 谁先完成取谁：成功则立即返回；失败（null）则继续等待尚未返回的镜像
             val result = select<JSONArray?> { remaining.forEach { it.onAwait { value -> value } } }
-            if (result != null) return@withContext result
+            if (result != null) {
+                runCatching { result.toString() }.getOrNull()?.let { body ->
+                    synchronized(pathCache) { pathCache.put(path, body to nowMs) }
+                }
+                return@withContext result
+            }
             remaining = remaining.filterNot { it.isCompleted }
         }
         Timber.w("$TAG: 所有镜像请求均失败 @ $path")

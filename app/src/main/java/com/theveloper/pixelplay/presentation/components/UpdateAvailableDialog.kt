@@ -4,24 +4,25 @@ import com.theveloper.pixelplay.utils.localizedStringResource
 import com.theveloper.pixelplay.utils.AppLocaleManager
 
 import android.os.Build
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.NewReleases
 import androidx.compose.material3.BasicAlertDialog
@@ -44,11 +45,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.github.ApkDownloadInstaller
 import com.theveloper.pixelplay.data.github.UpdateChecker
-import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
 import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 
@@ -79,11 +80,7 @@ fun UpdateAvailableDialog(
     val githubUrl = selectedArchKey?.let { updateInfo.abiMapFor(useLite)[it] } ?: updateInfo.apkUrl
 
     // 蓝奏云直链（已同步时可用）+ GitHub 兜底，两个下载源独立展示、互不掺和。
-    // ⚡ 蓝奏云分享里同时有多个文件（arm64 / arm32 / x86_64，lite / full 变体）：
-    //    浏览器下载只能带一个链接，这里**完全跟随用户在界面上做的选择** ——
-    //    变体用 useLite（精简版/完整版开关）、架构用 selectedArchKey（64/32 位选择），
-    //    与 GitHub 侧的选择保持联动；都没命中时才退回设备 ABI 推荐顺序。
-    //    否则会下载到装不上的架构。排序权重见 [lanzouFileRank]。
+    // 排序完全跟随界面上的变体 / 架构选择；都没命中时才退回设备 ABI 推荐顺序。
     val lanzouFilesOrdered = remember(updateInfo, useLite, deviceAbis, selectedArchKey) {
         if (updateInfo.isLanzouSynced) {
             updateInfo.lanzouFiles.sortedBy {
@@ -102,463 +99,354 @@ fun UpdateAvailableDialog(
             )
         }
     }
-    val hasAnySource = lanzouCandidates.isNotEmpty() || !githubUrl.isNullOrBlank()
 
     val isDownloading = downloadState is ApkDownloadInstaller.DownloadState.Downloading
     val isDownloaded = downloadState is ApkDownloadInstaller.DownloadState.Downloaded
     val isInstalling = downloadState is ApkDownloadInstaller.DownloadState.Installing
     val isError = downloadState is ApkDownloadInstaller.DownloadState.Error
     val errorMessage = (downloadState as? ApkDownloadInstaller.DownloadState.Error)?.message
-    // ⚡ 蓝奏云直链被 CDN 人机验证拦截 → 提示用浏览器打开
     val isLanzouError = (downloadState as? ApkDownloadInstaller.DownloadState.Error)?.isLanzou == true
-
-    val cardShape = AbsoluteSmoothCornerShape(30.dp, 60)
-    val blockShape = AbsoluteSmoothCornerShape(22.dp, 60)
-    val actionShape = AbsoluteSmoothCornerShape(18.dp, 60)
+    val downloadProgress = (downloadState as? ApkDownloadInstaller.DownloadState.Downloading)?.progress ?: -1f
+    val canDownload = !isDownloading && !isInstalling
 
     BasicAlertDialog(onDismissRequest = { if (!isDownloading) onDismiss() }) {
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .widthIn(max = 420.dp),
-            shape = cardShape,
+                .widthIn(max = 400.dp),
+            shape = AbsoluteSmoothCornerShape(28.dp, 60),
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            tonalElevation = 8.dp,
+            tonalElevation = 6.dp,
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(18.dp),
+                    .padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                // 标题区
-                Surface(
+                // ── 精简标题：图标 + 版本号，不再用多层卡片嵌套 ────────────────
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = blockShape,
-                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(14.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    Surface(
+                        shape = AbsoluteSmoothCornerShape(18.dp, 60),
+                        color = MaterialTheme.colorScheme.primaryContainer,
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                        ) {
-                            Surface(
-                                shape = AbsoluteSmoothCornerShape(12.dp, 60),
-                                color = MaterialTheme.colorScheme.secondaryContainer,
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.update_available_label),
-                                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                )
-                            }
-                            Surface(
-                                shape = AbsoluteSmoothCornerShape(16.dp, 60),
-                                color = MaterialTheme.colorScheme.primaryContainer,
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.NewReleases,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    modifier = Modifier.padding(10.dp).size(18.dp),
-                                )
-                            }
-                        }
-
+                        Icon(
+                            imageVector = Icons.Rounded.NewReleases,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.padding(11.dp).size(22.dp),
+                        )
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = stringResource(R.string.update_available_title),
+                            text = stringResource(R.string.update_available_label),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            text = "v${updateInfo.version}",
                             style = MaterialTheme.typography.titleLarge,
                             fontFamily = LocalAppFontFamily.current,
                             fontWeight = FontWeight.Bold,
                         )
+                    }
+                }
+
+                Text(
+                    text = stringResource(R.string.update_available_body, updateInfo.version),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+
+                // 同步状态只保留一条轻量提示，不再用整块彩色容器
+                if (updateInfo.isLanzouSynced) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .background(MaterialTheme.colorScheme.primary, CircleShape)
+                        )
                         Text(
-                            text = stringResource(R.string.update_available_body, updateInfo.version),
-                            style = MaterialTheme.typography.bodyMedium,
+                            text = localizedStringResource(R.string.ui_lanzou_cloud_is_up_to_date_fast_downloads_in_china),
+                            style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        
-                        // 蓝奏云同步状态
-                        if (updateInfo.isLanzouSynced) {
-                            Surface(
-                                shape = AbsoluteSmoothCornerShape(8.dp, 60),
-                                color = MaterialTheme.colorScheme.tertiaryContainer,
-                                modifier = Modifier.padding(top = 4.dp)
-                            ) {
-                                Text(
-                                    text = localizedStringResource(R.string.ui_lanzou_cloud_is_up_to_date_fast_downloads_in_china),
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
-                        } else if (updateInfo.lanzouFiles.isNotEmpty()) {
-                            Surface(
-                                shape = AbsoluteSmoothCornerShape(8.dp, 60),
-                                color = MaterialTheme.colorScheme.errorContainer,
-                                modifier = Modifier.padding(top = 4.dp)
-                            ) {
-                                Text(
-                                    text = localizedStringResource(R.string.ui_lanzou_cloud_and_github_versions_differ_only_github_downloads_are),
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onErrorContainer,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
-                        }
                     }
+                } else if (updateInfo.lanzouFiles.isNotEmpty()) {
+                    Text(
+                        text = localizedStringResource(R.string.ui_lanzou_cloud_and_github_versions_differ_only_github_downloads_are),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
                 }
 
-                // 下载进度区
-                AnimatedVisibility(
-                    visible = isDownloading || isDownloaded || isInstalling || isError,
-                    enter = fadeIn(),
-                    exit = fadeOut(),
-                ) {
-                    when (downloadState) {
-                        is ApkDownloadInstaller.DownloadState.Downloading -> {
-                            val progress = downloadState.progress
-                            Column(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalArrangement = Arrangement.spacedBy(6.dp),
-                            ) {
-                                Text(
-                                    text = if (progress >= 0) {
-                                        AppLocaleManager.getString(R.string.ui_downloading_69e1d89, ((progress * 100).toInt()).toString())
-                                    } else {
-                                        AppLocaleManager.getString(R.string.ui_downloading_644d4f7)
-                                    },
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                if (progress >= 0) {
-                                    LinearProgressIndicator(
-                                        progress = { progress },
-                                        modifier = Modifier.fillMaxWidth(),
+                // ── 下载进度 / 状态：只在这里显示一次 ──────────────────────────
+                when {
+                    isDownloading -> {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                text = if (downloadProgress >= 0) {
+                                    AppLocaleManager.getString(
+                                        R.string.ui_downloading_69e1d89,
+                                        (downloadProgress * 100).toInt().toString()
                                     )
                                 } else {
-                                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                                }
+                                    AppLocaleManager.getString(R.string.ui_downloading_644d4f7)
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            if (downloadProgress >= 0) {
+                                LinearProgressIndicator(
+                                    progress = { downloadProgress },
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            } else {
+                                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                             }
                         }
-                        is ApkDownloadInstaller.DownloadState.Downloaded -> {
-                            Text(
-                                text = localizedStringResource(R.string.ui_download_complete_starting_installation),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary,
+                    }
+                    isDownloaded -> Text(
+                        text = localizedStringResource(R.string.ui_download_complete_starting_installation),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    isInstalling -> Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                        Text(
+                            text = localizedStringResource(R.string.ui_starting_installation),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    isError -> Text(
+                        text = errorMessage ?: localizedStringResource(R.string.ui_residue_setcat_download_failed),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+
+                // ── 选项：版本 / 架构合成一行紧凑胶囊，横向滚动 ────────────────
+                val showVariantChips = hasLiteVariant && !isDownloading && !isInstalling
+                val showArchChips = archKeys.size > 1 && !githubUrl.isNullOrBlank() && !isDownloading && !isInstalling
+                if (showVariantChips || showArchChips) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        if (showVariantChips) {
+                            UpdateOptionChip(
+                                label = stringResource(R.string.update_version_full),
+                                selected = !useLite,
+                                badge = if (!useLite && com.theveloper.pixelplay.BuildConfig.TELEGRAM_ENABLED) {
+                                    stringResource(R.string.update_arch_recommended)
+                                } else null,
+                                onClick = { useLite = false }
+                            )
+                            UpdateOptionChip(
+                                label = stringResource(R.string.update_version_lite),
+                                selected = useLite,
+                                badge = if (useLite && !com.theveloper.pixelplay.BuildConfig.TELEGRAM_ENABLED) {
+                                    stringResource(R.string.update_arch_recommended)
+                                } else null,
+                                onClick = { useLite = true }
                             )
                         }
-                        ApkDownloadInstaller.DownloadState.Installing -> {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                                Text(
-                                    text = localizedStringResource(R.string.ui_starting_installation),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        if (showVariantChips && showArchChips) {
+                            Box(
+                                modifier = Modifier
+                                    .size(4.dp)
+                                    .background(MaterialTheme.colorScheme.outlineVariant, CircleShape)
+                            )
+                        }
+                        if (showArchChips) {
+                            archKeys.forEach { key ->
+                                UpdateOptionChip(
+                                    label = stringResource(archLabelRes(key)),
+                                    selected = selectedArchKey == key,
+                                    badge = if (recommendedArchKey == key) {
+                                        stringResource(R.string.update_arch_recommended)
+                                    } else null,
+                                    onClick = { selectedArchKey = key },
                                 )
                             }
                         }
-                        is ApkDownloadInstaller.DownloadState.Error -> {
-                            Text(
-                                text = errorMessage ?: localizedStringResource(R.string.ui_residue_setcat_download_failed),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.error,
-                            )
-                        }
-                        else -> {}
                     }
                 }
 
-                // 底部操作区
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    val canDownload = !isDownloading && !isInstalling && hasAnySource
-                    val downloadProgress = (downloadState as? ApkDownloadInstaller.DownloadState.Downloading)?.progress ?: 0f
-                    
-                    if (isDownloading) {
-                        // 下载中显示进度条按钮
-                        Surface(
-                            shape = actionShape,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(48.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier.fillMaxSize()
-                            ) {
-                                // 进度背景填充
+                // ── 操作区：主按钮 + 次按钮，下载中只保留一根进度按钮 ──────────
+                if (isDownloading) {
+                    Surface(
+                        shape = AbsoluteSmoothCornerShape(18.dp, 60),
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            if (downloadProgress >= 0) {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxHeight()
                                         .fillMaxWidth(downloadProgress)
                                         .background(MaterialTheme.colorScheme.secondary)
                                 )
-                                // 进度文字
+                            }
+                            Text(
+                                text = if (downloadProgress >= 0) {
+                                    "${(downloadProgress * 100).toInt()}%"
+                                } else {
+                                    AppLocaleManager.getString(R.string.ui_downloading_644d4f7)
+                                },
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.align(Alignment.Center),
+                            )
+                        }
+                    }
+                } else if (!isDownloaded && !isInstalling) {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        if (lanzouCandidates.isNotEmpty()) {
+                            Button(
+                                // 蓝奏云新版直链后面还有 CDN 挑战 + 中转页，应用内下载过不去；
+                                // 把解析出的直链交给浏览器完成挑战、跳转与下载。
+                                onClick = { onOpenInBrowser(lanzouCandidates.first().url) },
+                                shape = AbsoluteSmoothCornerShape(18.dp, 60),
+                                enabled = canDownload,
+                                modifier = Modifier.fillMaxWidth().height(52.dp),
+                            ) {
                                 Text(
-                                    text = "${(downloadProgress * 100).toInt()}%",
+                                    text = localizedStringResource(R.string.ui_download_from_lanzou_cloud_fast_in_china),
                                     style = MaterialTheme.typography.labelLarge,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onPrimary,
-                                    modifier = Modifier.align(Alignment.Center)
                                 )
                             }
                         }
-                    } else {
-                        // 双下载源：蓝奏云（主，国内高速）+ GitHub（备选），独立展示互不掺和
-                        Column(
+                        if (!githubUrl.isNullOrBlank()) {
+                            OutlinedButton(
+                                onClick = {
+                                    onDownload(listOf(ApkDownloadInstaller.DownloadCandidate(url = githubUrl)))
+                                },
+                                shape = AbsoluteSmoothCornerShape(18.dp, 60),
+                                enabled = canDownload,
+                                modifier = Modifier.fillMaxWidth().height(52.dp),
+                            ) {
+                                Text(
+                                    text = localizedStringResource(R.string.ui_download_from_github),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                            }
+                        }
+                        Row(
                             modifier = Modifier.fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            if (lanzouCandidates.isNotEmpty()) {
-                                Button(
-                                    // ⚡ 蓝奏云新版直链后面还有 CDN 挑战 + 中转页（ajax.php）两道机关，
-                                    //    应用内下载过不去；把**解析出的直链**直接交给浏览器 —— 挑战、
-                                    //    中转跳转、最终下载全部由浏览器完成（与网页打开行为一致）。
-                                    //    直链已按「当前安装变体 + 设备 ABI」排好序，第一个即最优文件。
-                                    onClick = { onOpenInBrowser(lanzouCandidates.first().url) },
-                                    shape = actionShape,
-                                    enabled = canDownload,
-                                    modifier = Modifier.fillMaxWidth().height(48.dp)
-                                ) {
-                                    Text(
-                                        text = localizedStringResource(R.string.ui_download_from_lanzou_cloud_fast_in_china),
-                                        style = MaterialTheme.typography.labelLarge,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = MaterialTheme.colorScheme.onPrimary,
-                                    )
-                                }
-                                // ⚡ 明示将下载哪个文件（架构 / 变体），避免用户怀疑"下错架构"
-                                lanzouFilesOrdered.firstOrNull()?.let { selected ->
-                                    Text(
-                                        text = localizedStringResource(R.string.ui_file_to_download, (selected.fileName).toString()),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1,
-                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 4.dp),
-                                    )
-                                }
-                            }
-                            // 版本选择（完整版 / 精简版 no-telegram）：仅在 GitHub 同时发布了
-                            // 精简版资产时显示；切换后架构选择与下载链接联动。
-                            if (hasLiteVariant && !isDownloading && !isInstalling) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                ) {
-                                    val liteSelected = useLite
-                                    val fullSelected = !useLite
-                                    Surface(
-                                        onClick = { useLite = false },
-                                        shape = MaterialTheme.shapes.small,
-                                        color = if (fullSelected) {
-                                            MaterialTheme.colorScheme.primaryContainer
-                                        } else {
-                                            MaterialTheme.colorScheme.surfaceContainerHigh
-                                        },
-                                        modifier = Modifier.height(32.dp)
-                                    ) {
-                                        Row(
-                                            modifier = Modifier.padding(horizontal = 12.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                        ) {
-                                            Text(
-                                                text = stringResource(R.string.update_version_full),
-                                                style = MaterialTheme.typography.labelSmall,
-                                                fontWeight = FontWeight.Medium,
-                                                color = if (fullSelected) {
-                                                    MaterialTheme.colorScheme.onPrimaryContainer
-                                                } else {
-                                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                                },
-                                            )
-                                            if (fullSelected && com.theveloper.pixelplay.BuildConfig.TELEGRAM_ENABLED) {
-                                                Text(
-                                                    text = stringResource(R.string.update_arch_recommended),
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = MaterialTheme.colorScheme.primary,
-                                                )
-                                            }
-                                        }
-                                    }
-                                    Surface(
-                                        onClick = { useLite = true },
-                                        shape = MaterialTheme.shapes.small,
-                                        color = if (liteSelected) {
-                                            MaterialTheme.colorScheme.primaryContainer
-                                        } else {
-                                            MaterialTheme.colorScheme.surfaceContainerHigh
-                                        },
-                                        modifier = Modifier.height(32.dp)
-                                    ) {
-                                        Row(
-                                            modifier = Modifier.padding(horizontal = 12.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                        ) {
-                                            Text(
-                                                text = stringResource(R.string.update_version_lite),
-                                                style = MaterialTheme.typography.labelSmall,
-                                                fontWeight = FontWeight.Medium,
-                                                color = if (liteSelected) {
-                                                    MaterialTheme.colorScheme.onPrimaryContainer
-                                                } else {
-                                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                                },
-                                            )
-                                            if (liteSelected && !com.theveloper.pixelplay.BuildConfig.TELEGRAM_ENABLED) {
-                                                Text(
-                                                    text = stringResource(R.string.update_arch_recommended),
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = MaterialTheme.colorScheme.primary,
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            // 架构选择（64/32 位）：仅当存在多个架构的 APK 且未下载中时显示
-                            if (archKeys.size > 1 && !githubUrl.isNullOrBlank() && !isDownloading && !isInstalling) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                ) {
-                                    archKeys.forEach { key ->
-                                        val isSelected = selectedArchKey == key
-                                        val isRecommended = recommendedArchKey == key
-                                        Surface(
-                                            onClick = { selectedArchKey = key },
-                                            shape = MaterialTheme.shapes.small,
-                                            color = if (isSelected) {
-                                                MaterialTheme.colorScheme.primaryContainer
-                                            } else {
-                                                MaterialTheme.colorScheme.surfaceContainerHigh
-                                            },
-                                            modifier = Modifier.height(32.dp)
-                                        ) {
-                                            Row(
-                                                modifier = Modifier.padding(horizontal = 12.dp),
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                            ) {
-                                                Text(
-                                                    text = stringResource(archLabelRes(key)),
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    fontWeight = FontWeight.Medium,
-                                                    color = if (isSelected) {
-                                                        MaterialTheme.colorScheme.onPrimaryContainer
-                                                    } else {
-                                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                                    },
-                                                )
-                                                if (isRecommended) {
-                                                    Text(
-                                                        text = stringResource(R.string.update_arch_recommended),
-                                                        style = MaterialTheme.typography.labelSmall,
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = MaterialTheme.colorScheme.primary,
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            if (!githubUrl.isNullOrBlank()) {
-                                OutlinedButton(
-                                    onClick = {
-                                        onDownload(listOf(ApkDownloadInstaller.DownloadCandidate(url = githubUrl)))
-                                    },
-                                    shape = actionShape,
-                                    enabled = canDownload,
-                                    modifier = Modifier.fillMaxWidth().height(48.dp)
-                                ) {
-                                    Text(
-                                        text = localizedStringResource(R.string.ui_download_from_github),
-                                        style = MaterialTheme.typography.labelLarge,
-                                        fontWeight = FontWeight.SemiBold,
-                                    )
-                                }
-                            }
-                            // ⚡ 蓝奏云直链被 CDN 人机验证拦截：提供「浏览器打开」兜底，而不是换 GitHub 源
                             if (isLanzouError) {
-                                OutlinedButton(
+                                TextButton(
                                     onClick = {
                                         onOpenInBrowser(
                                             lanzouCandidates.firstOrNull()?.url
                                                 ?: UpdateChecker.LANZOU_SHARE_URL
                                         )
                                     },
-                                    shape = actionShape,
-                                    modifier = Modifier.fillMaxWidth().height(48.dp)
                                 ) {
                                     Text(
                                         text = localizedStringResource(R.string.ui_open_lanzou_cloud_in_browser),
-                                        style = MaterialTheme.typography.labelLarge,
-                                        fontWeight = FontWeight.SemiBold,
+                                        style = MaterialTheme.typography.labelMedium,
                                     )
                                 }
                             }
-                            // 后台更新：关闭弹窗后用前台服务下载，通知栏实时显示进度
-                            // ⚡ 仅 GitHub 源支持应用内下载；蓝奏云直链需浏览器过挑战，不走此路径
-                            if (!githubUrl.isNullOrBlank() && !isDownloading && !isInstalling) {
+                            if (!githubUrl.isNullOrBlank()) {
                                 TextButton(
                                     onClick = {
                                         onBackgroundDownload(
                                             listOfNotNull(
-                                                githubUrl?.let {
-                                                    ApkDownloadInstaller.DownloadCandidate(url = it)
-                                                }
+                                                ApkDownloadInstaller.DownloadCandidate(url = githubUrl)
                                             )
                                         )
                                         onDismiss()
                                     },
-                                    shape = actionShape,
-                                    modifier = Modifier.fillMaxWidth().height(48.dp)
                                 ) {
                                     Text(
                                         text = localizedStringResource(R.string.ui_update_in_background_progress_shown_in_notifications),
-                                        style = MaterialTheme.typography.labelLarge,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = MaterialTheme.colorScheme.primary,
+                                        style = MaterialTheme.typography.labelMedium,
                                     )
                                 }
                             }
-                            if (lanzouCandidates.isEmpty() && githubUrl.isNullOrBlank() && !isDownloaded && !isInstalling) {
-                                Text(
-                                    text = stringResource(R.string.update_no_download_source),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.fillMaxWidth(),
-                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                                )
-                            }
+                        }
+                        if (lanzouCandidates.isEmpty() && githubUrl.isNullOrBlank()) {
+                            Text(
+                                text = stringResource(R.string.update_no_download_source),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+/** 版本 / 架构选项胶囊：选中态用 primaryContainer，附「推荐」小字。 */
+@Composable
+private fun UpdateOptionChip(
+    label: String,
+    selected: Boolean,
+    badge: String?,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        shape = CircleShape,
+        color = if (selected) {
+            MaterialTheme.colorScheme.primaryContainer
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerLow
+        },
+        modifier = Modifier.height(32.dp),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Medium,
+                color = if (selected) {
+                    MaterialTheme.colorScheme.onPrimaryContainer
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (badge != null) {
+                Text(
+                    text = badge,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1,
+                )
             }
         }
     }

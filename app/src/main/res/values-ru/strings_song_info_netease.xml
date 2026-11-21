@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- NetEase song info sections (P0/P1) -->
+    <string name="song_info_section_netease">"NetEase"</string>
+    <string name="song_info_label_alias">"Псевдоним"</string>
+    <string name="song_info_label_alias_translation">"Перевод названия"</string>
+    <string name="song_info_label_release_date">"Дата выхода"</string>
+    <string name="song_info_label_popularity">"Популярность"</string>
+    <string name="song_info_label_comments">"Комментарии"</string>
+    <string name="song_info_label_quality_max">"Макс. качество"</string>
+    <string name="song_info_label_copyright">"Доступность"</string>
+    <string name="song_info_playable_yes">"Доступно"</string>
+    <string name="song_info_playable_no">"Недоступно"</string>
+    <string name="song_info_section_album_extra">"Альбом"</string>
+    <string name="song_info_section_artist_extra">"Исполнитель"</string>
+    <string name="song_info_label_company">"Лейбл"</string>
+    <string name="song_info_label_track_count">"Треков"</string>
+    <string name="song_info_section_wiki">"О песне"</string>
+    <string name="song_info_section_similar">"Похожие песни"</string>
+    <string name="song_info_label_fans">"Подписчики"</string>
+    <string name="song_info_action_view_album">"Открыть альбом"</string>
+    <string name="song_info_action_view_artist">"Открыть исполнителя"</string>
+</resources>

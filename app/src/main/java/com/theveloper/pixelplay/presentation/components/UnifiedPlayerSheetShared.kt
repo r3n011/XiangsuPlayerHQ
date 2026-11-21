@@ -59,6 +59,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -113,7 +114,9 @@ internal fun MiniPlayerContentInternal(
     totalDurationProvider: () -> Long = { 0L },
     expansionFractionProvider: () -> Float = { 0f },
     /** 迷你条样式（CLASSIC / MATERIAL / EXPRESSIVE），见 MiniPlayerStyle */
-    miniPlayerStyle: String = com.theveloper.pixelplay.data.preferences.MiniPlayerStyle.CLASSIC.name
+    miniPlayerStyle: String = com.theveloper.pixelplay.data.preferences.MiniPlayerStyle.CLASSIC.name,
+    /** ⚡ 图形库：Expressive 迷你播放器封面形状 */
+    miniPlayerArtShape: Shape = ExpressiveShapes.MiniPlayerArt
 ) {
     // MATERIAL = Rhythm 的 MaterialMiniPlayer（三键 + 卡片底）
     val isMaterialStyle = miniPlayerStyle ==
@@ -136,6 +139,7 @@ internal fun MiniPlayerContentInternal(
             currentPositionProvider = currentPositionProvider,
             totalDurationProvider = totalDurationProvider,
             expansionFractionProvider = expansionFractionProvider,
+            artShape = miniPlayerArtShape,
             modifier = modifier
         )
         return
@@ -466,6 +470,8 @@ private fun ExpressiveMiniPlayerContent(
     currentPositionProvider: () -> Long,
     totalDurationProvider: () -> Long,
     expansionFractionProvider: () -> Float,
+    /** ⚡ 图形库：Expressive 迷你播放器封面形状 */
+    artShape: Shape = ExpressiveShapes.MiniPlayerArt,
     modifier: Modifier = Modifier,
 ) {
     val scheme = LocalMaterialTheme.current
@@ -543,7 +549,7 @@ private fun ExpressiveMiniPlayerContent(
                         SmartImage(
                             model = artModel,
                             contentDescription = song.title,
-                            shape = ExpressiveShapes.MiniPlayerArt,
+                            shape = artShape,
                             targetSize = Size(150, 150),
                             modifier = Modifier.fillMaxSize(),
                             placeholderModel = if (artModel?.startsWith("telegram_art") == true) {

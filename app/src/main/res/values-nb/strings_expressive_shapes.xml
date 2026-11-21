@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Expressive player shape library -->
+    <string name="setcat_expressive_shapes_group">"Formbibliotek"</string>
+    <string name="setcat_expressive_shape_player_art">"Spilleromslag"</string>
+    <string name="setcat_expressive_shape_player_controls">"Kontrollknapper"</string>
+    <string name="setcat_expressive_shape_mini_player">"Minispiller-omslag"</string>
+    <string name="setcat_expressive_shape_picker_title">"Velg en form"</string>
+    <string name="setcat_expressive_shape_picker_desc">"Velg en Material 3 Expressive-form; den brukes med en gang"</string>
+    <string name="setcat_expressive_shape_preset">"Formforhåndsinnstilling"</string>
+    <string name="setcat_expressive_shape_preset_desc">"Bruk et samlet sett med former for spiller, kontroller og minispiller"</string>
+    <string name="shape_preset_rhythm">"Rhythm standard"</string>
+    <string name="shape_preset_soft">"Myk"</string>
+    <string name="shape_preset_geometric">"Geometrisk"</string>
+    <string name="shape_preset_floral">"Blomstrete"</string>
+    <string name="shape_name_circle">"Sirkel"</string>
+    <string name="shape_name_square">"Kvadrat"</string>
+    <string name="shape_name_pentagon">"Femkant"</string>
+    <string name="shape_name_diamond">"Romben"</string>
+    <string name="shape_name_flower">"Blomst"</string>
+    <string name="shape_name_clover_4">"Firkløver"</string>
+    <string name="shape_name_clover_8">"Åttekløver"</string>
+    <string name="shape_name_heart">"Hjerte"</string>
+    <string name="shape_name_boom">"Eksplosjon"</string>
+    <string name="shape_name_soft_boom">"Myk eksplosjon"</string>
+    <string name="shape_name_cookie_4">"Kjeks 4"</string>
+    <string name="shape_name_cookie_6">"Kjeks 6"</string>
+    <string name="shape_name_cookie_9">"Kjeks 9"</string>
+    <string name="shape_name_cookie_12">"Kjeks 12"</string>
+    <string name="shape_name_bun">"Bolle"</string>
+    <string name="shape_name_gem">"Edelsten"</string>
+    <string name="shape_name_pixel_circle">"Pikselssirkel"</string>
+</resources>

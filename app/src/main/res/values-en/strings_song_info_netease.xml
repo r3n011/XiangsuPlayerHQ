@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- NetEase song info sections (P0/P1) -->
+    <string name="song_info_section_netease">"NetEase"</string>
+    <string name="song_info_label_alias">"Alias"</string>
+    <string name="song_info_label_alias_translation">"Translated title"</string>
+    <string name="song_info_label_release_date">"Release date"</string>
+    <string name="song_info_label_popularity">"Popularity"</string>
+    <string name="song_info_label_comments">"Comments"</string>
+    <string name="song_info_label_quality_max">"Max quality"</string>
+    <string name="song_info_label_copyright">"Availability"</string>
+    <string name="song_info_playable_yes">"Playable"</string>
+    <string name="song_info_playable_no">"Not available"</string>
+    <string name="song_info_section_album_extra">"Album"</string>
+    <string name="song_info_section_artist_extra">"Artist"</string>
+    <string name="song_info_label_company">"Label"</string>
+    <string name="song_info_label_track_count">"Tracks"</string>
+    <string name="song_info_section_wiki">"About this song"</string>
+    <string name="song_info_section_similar">"Similar songs"</string>
+    <string name="song_info_label_fans">"Followers"</string>
+    <string name="song_info_action_view_album">"View album"</string>
+    <string name="song_info_action_view_artist">"View artist"</string>
+</resources>

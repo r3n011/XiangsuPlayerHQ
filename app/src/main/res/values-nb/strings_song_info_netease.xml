@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- NetEase song info sections (P0/P1) -->
+    <string name="song_info_section_netease">"NetEase"</string>
+    <string name="song_info_label_alias">"Alias"</string>
+    <string name="song_info_label_alias_translation">"Oversatt tittel"</string>
+    <string name="song_info_label_release_date">"Utgivelsesdato"</string>
+    <string name="song_info_label_popularity">"Popularitet"</string>
+    <string name="song_info_label_comments">"Kommentarer"</string>
+    <string name="song_info_label_quality_max">"Maks. kvalitet"</string>
+    <string name="song_info_label_copyright">"Tilgjengelighet"</string>
+    <string name="song_info_playable_yes">"Spillbar"</string>
+    <string name="song_info_playable_no">"Ikke tilgjengelig"</string>
+    <string name="song_info_section_album_extra">"Album"</string>
+    <string name="song_info_section_artist_extra">"Artist"</string>
+    <string name="song_info_label_company">"Label"</string>
+    <string name="song_info_label_track_count">"Spor"</string>
+    <string name="song_info_section_wiki">"Om sangen"</string>
+    <string name="song_info_section_similar">"Lignende sanger"</string>
+    <string name="song_info_label_fans">"Følgere"</string>
+    <string name="song_info_action_view_album">"Se album"</string>
+    <string name="song_info_action_view_artist">"Se artist"</string>
+</resources>

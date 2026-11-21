@@ -73,6 +73,11 @@ class SourceMarketViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(SourceMarketUiState())
     val uiState: StateFlow<SourceMarketUiState> = _uiState.asStateFlow()
 
+    /** 脚本更新提醒（lx updateAlert）：脚本作者提示新版本时在这里透出 */
+    val updateAlerts: StateFlow<List<LxJsEngine.LxUpdateAlert>> = engine.updateAlerts
+
+    fun dismissUpdateAlert(fileName: String) = engine.dismissUpdateAlert(fileName)
+
     init {
         refreshSources()
         loadReleases()

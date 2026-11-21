@@ -1190,6 +1190,31 @@ class PlayerViewModel @Inject constructor(
             initialValue = false
         )
 
+    // ⚡ Expressive 图形库：播放器封面 / 控制按钮 / 迷你播放器封面
+    val expressivePlayerArtShape: StateFlow<String> =
+        userPreferencesRepository.expressivePlayerArtShapeFlow
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = com.theveloper.pixelplay.presentation.components.ExpressiveShapes.DEFAULT_PLAYER_ART
+            )
+
+    val expressivePlayerControlsShape: StateFlow<String> =
+        userPreferencesRepository.expressivePlayerControlsShapeFlow
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = com.theveloper.pixelplay.presentation.components.ExpressiveShapes.DEFAULT_PLAYER_CONTROLS
+            )
+
+    val expressiveMiniPlayerShape: StateFlow<String> =
+        userPreferencesRepository.expressiveMiniPlayerShapeFlow
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = com.theveloper.pixelplay.presentation.components.ExpressiveShapes.DEFAULT_MINI_PLAYER
+            )
+
     // Lyrics sync offset - now managed by LyricsStateHolder
     val currentSongLyricsSyncOffset: StateFlow<Int> = lyricsStateHolder.currentSongSyncOffset
 
@@ -9885,15 +9910,25 @@ class PlayerViewModel @Inject constructor(
      * @param onResult 回调：返回成功获取的歌手 ID 或 null（失败时）
      */
     fun fetchNeteaseArtistId(neteaseSongId: Long, onResult: (Long?) -> Unit) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val result = personalFmApi.fetchNeteaseArtistId(neteaseSongId, neteaseCookie)
-            result.onSuccess { artistId ->
+        viewModelScope.launch {
+            // ⚡ 网络请求走 IO，但回调必须切回主线程：
+            //    调用方（SheetActionHandlers）会在回调里直接 navController.navigate，
+            //    在 IO 线程调用会抛 "Method setCurrentState must be called on the main thread"。
+            val artistId = withContext(Dispatchers.IO) {
+                // 先走登录态通道；失败/未登录时改用公开歌曲详情接口解析
+                val cookieArtistId = personalFmApi.fetchNeteaseArtistId(neteaseSongId, neteaseCookie)
+                    .getOrNull()
+                cookieArtistId ?: neteaseRepository.getNeteaseArtistId(neteaseSongId)
+            }
+            // ⚡ 即使用户在 IO 上下文里调用本方法，也要强制切回主线程再回调：
+            //    调用方会在回调里直接 navController.navigate，非主线程会抛
+            //    "Method setCurrentState must be called on the main thread"。
+            withContext(Dispatchers.Main.immediate) {
                 onResult(artistId)
-            }.onFailure {
-                onResult(null)
             }
         }
     }
+
 
     private fun loadLyricsForCurrentSong() {
         val currentSong = playbackStateHolder.stablePlayerState.value.currentSong ?: return

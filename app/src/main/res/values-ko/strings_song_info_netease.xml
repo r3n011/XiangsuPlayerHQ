@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- NetEase song info sections (P0/P1) -->
+    <string name="song_info_section_netease">"넷이즈"</string>
+    <string name="song_info_label_alias">"별칭"</string>
+    <string name="song_info_label_alias_translation">"번역 제목"</string>
+    <string name="song_info_label_release_date">"발매일"</string>
+    <string name="song_info_label_popularity">"인기도"</string>
+    <string name="song_info_label_comments">"댓글"</string>
+    <string name="song_info_label_quality_max">"최고 음질"</string>
+    <string name="song_info_label_copyright">"이용 가능"</string>
+    <string name="song_info_playable_yes">"재생 가능"</string>
+    <string name="song_info_playable_no">"재생 불가"</string>
+    <string name="song_info_section_album_extra">"앨범"</string>
+    <string name="song_info_section_artist_extra">"아티스트"</string>
+    <string name="song_info_label_company">"레이블"</string>
+    <string name="song_info_label_track_count">"수록곡"</string>
+    <string name="song_info_section_wiki">"곡 정보"</string>
+    <string name="song_info_section_similar">"비슷한 곡"</string>
+    <string name="song_info_label_fans">"팔로워"</string>
+    <string name="song_info_action_view_album">"앨범 보기"</string>
+    <string name="song_info_action_view_artist">"아티스트 보기"</string>
+</resources>

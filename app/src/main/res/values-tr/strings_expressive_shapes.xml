@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Expressive player shape library -->
+    <string name="setcat_expressive_shapes_group">"Şekil kitaplığı"</string>
+    <string name="setcat_expressive_shape_player_art">"Oynatıcı kapağı"</string>
+    <string name="setcat_expressive_shape_player_controls">"Kontrol düğmeleri"</string>
+    <string name="setcat_expressive_shape_mini_player">"Mini oynatıcı kapağı"</string>
+    <string name="setcat_expressive_shape_picker_title">"Bir şekil seçin"</string>
+    <string name="setcat_expressive_shape_picker_desc">"Bir Material 3 Expressive şekli seçin; hemen uygulanır"</string>
+    <string name="setcat_expressive_shape_preset">"Şekil ön ayarı"</string>
+    <string name="setcat_expressive_shape_preset_desc">"Oynatıcı, kontroller ve mini oynatıcı için şekil seti uygula"</string>
+    <string name="shape_preset_rhythm">"Rhythm varsayılanı"</string>
+    <string name="shape_preset_soft">"Yumuşak"</string>
+    <string name="shape_preset_geometric">"Geometrik"</string>
+    <string name="shape_preset_floral">"Çiçekli"</string>
+    <string name="shape_name_circle">"Daire"</string>
+    <string name="shape_name_square">"Kare"</string>
+    <string name="shape_name_pentagon">"Beşgen"</string>
+    <string name="shape_name_diamond">"Eşkenar dörtgen"</string>
+    <string name="shape_name_flower">"Çiçek"</string>
+    <string name="shape_name_clover_4">"4 Yapraklı Yonca"</string>
+    <string name="shape_name_clover_8">"8 Yapraklı Yonca"</string>
+    <string name="shape_name_heart">"Kalp"</string>
+    <string name="shape_name_boom">"Patlama"</string>
+    <string name="shape_name_soft_boom">"Yumuşak Patlama"</string>
+    <string name="shape_name_cookie_4">"Kurabiye 4"</string>
+    <string name="shape_name_cookie_6">"Kurabiye 6"</string>
+    <string name="shape_name_cookie_9">"Kurabiye 9"</string>
+    <string name="shape_name_cookie_12">"Kurabiye 12"</string>
+    <string name="shape_name_bun">"Çörek"</string>
+    <string name="shape_name_gem">"Mücevher"</string>
+    <string name="shape_name_pixel_circle">"Piksel Daire"</string>
+</resources>

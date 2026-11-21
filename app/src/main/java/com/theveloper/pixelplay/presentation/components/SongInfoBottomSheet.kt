@@ -48,6 +48,16 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.AudioFile
+import androidx.compose.material.icons.rounded.Block
+import androidx.compose.material.icons.rounded.Business
+import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.ChatBubbleOutline
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.GraphicEq
+import androidx.compose.material.icons.rounded.Label
+import androidx.compose.material.icons.rounded.Translate
+import androidx.compose.material.icons.rounded.TrendingUp
 import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Favorite
@@ -164,6 +174,7 @@ fun SongInfoBottomSheet(
     val ringtonePermissionMissingMsg = stringResource(R.string.song_info_ringtone_permission_missing)
     val ringtoneFailedFormat = stringResource(R.string.song_info_ringtone_failed)
     val shareChooserTitle = stringResource(R.string.song_info_share_chooser_title)
+    val similarQueueName = stringResource(R.string.song_info_section_similar)
     val errorShareSongFormat = stringResource(R.string.error_share_song_format)
     var showEditSheet by remember { mutableStateOf(false) }
     var showArtistPicker by remember { mutableStateOf(false) }
@@ -173,6 +184,12 @@ fun SongInfoBottomSheet(
     var pendingTonePermissionTarget by remember { mutableStateOf<ToneTarget?>(null) }
     val audioMeta by songInfoViewModel.audioMeta.collectAsStateWithLifecycle()
     val resolvedArtists by songInfoViewModel.resolvedArtists.collectAsStateWithLifecycle()
+    // ── 网易云歌曲扩展信息（P0/P1：别名/发行时间/专辑/歌手/百科/相似歌曲）──
+    val neteaseExtra by songInfoViewModel.neteaseExtra.collectAsStateWithLifecycle()
+    val neteaseExtraLoading by songInfoViewModel.neteaseExtraLoading.collectAsStateWithLifecycle()
+    LaunchedEffect(song.id) {
+        songInfoViewModel.loadNeteaseExtra(song)
+    }
     // ── 在线歌曲下载 ──────────────────────────────────────
     val playerViewModel: PlayerViewModel = hiltViewModel()
     val downloads by playerViewModel.downloads.collectAsStateWithLifecycle()
@@ -734,6 +751,55 @@ fun SongInfoBottomSheet(
                                             tiles = basicTiles
                                         )
 
+                                        // ⚡ 网易云在线歌曲：展示云端扩展信息（别名/发行时间/专辑/歌手/百科/相似歌曲），
+                                        //    并隐藏对在线歌曲无意义的本地文件字段（文件大小/位深/添加时间等）。
+                                        val isNeteaseSong = song.neteaseId != null ||
+                                            song.contentUriString.startsWith("netease://")
+                                        if (isNeteaseSong) {
+                                            neteaseExtra?.let { extra ->
+                                                NeteaseSongExtraSections(
+                                                    extra = extra,
+                                                    // 复用现有「在线专辑 / 在线歌手」导航能力（AlbumDetail 内置网易云接口兜底、
+                                                    // triggerArtistNavigationFromPlayer 的 netease 通道）
+                                                    onAlbumClick = {
+                                                        val albumId = extra.album?.id ?: 0L
+                                                        if (albumId > 0L) {
+                                                            playerViewModel.triggerAlbumNavigationFromPlayer(albumId)
+                                                        } else {
+                                                            onNavigateToAlbum()
+                                                        }
+                                                    },
+                                                    onArtistClick = {
+                                                        val artistId = extra.artist?.id ?: 0L
+                                                        if (artistId > 0L && song.neteaseId != null) {
+                                                            playerViewModel.triggerArtistNavigationFromPlayer(
+                                                                artistId = 0L,
+                                                                songNeteaseId = song.neteaseId,
+                                                                neteaseArtistId = artistId
+                                                            )
+                                                        } else {
+                                                            onOpenNeteaseArtistHomepage?.invoke() ?: onNavigateToArtist()
+                                                        }
+                                                    },
+                                                    onSimilarClick = { similar ->
+                                                        scope.launch {
+                                                            val ids = neteaseExtra?.similarSongs?.map { it.id }
+                                                                ?: emptyList()
+                                                            val songs = songInfoViewModel.resolveNeteaseSongs(ids)
+                                                            val target = songs.firstOrNull { it.neteaseId == similar.id }
+                                                            if (target != null) {
+                                                                playerViewModel.playSongs(
+                                                                    songsToPlay = songs,
+                                                                    startSong = target,
+                                                                    queueName = similarQueueName
+                                                                )
+                                                            }
+                                                        }
+                                                    }
+                                                )
+                                            }
+                                        }
+
                                         // ── 文件信息（格式 / 位深 / 采样率 / 码率 / 声道 / 大小 / 位置 / 日期）──
                                         val meta = audioMeta
                                         val fileTiles = buildList {
@@ -831,10 +897,12 @@ fun SongInfoBottomSheet(
                                                 )
                                             )
                                         }
-                                        InfoTileSection(
-                                            title = stringResource(R.string.song_info_section_file),
-                                            tiles = fileTiles
-                                        )
+                                        if (!isNeteaseSong) {
+                                            InfoTileSection(
+                                                title = stringResource(R.string.song_info_section_file),
+                                                tiles = fileTiles
+                                            )
+                                        }
 
                                         Spacer(Modifier.height(80.dp))
                                     }
@@ -1360,6 +1428,333 @@ private fun InfoTileSection(
                 }
                 index += 2
             }
+        }
+    }
+}
+
+/**
+ * 网易云歌曲扩展信息区块（P0/P1）：
+ * 基础信息（别名 / 译名 / 发行日期 / 热度 / 评论 / 最高音质 / 版权）
+ * → 专辑信息 → 歌手信息 → 歌曲百科 → 相似歌曲。
+ * 任一区块字段缺失自动隐藏，不影响本地歌曲的既有信息展示。
+ */
+@Composable
+private fun NeteaseSongExtraSections(
+    extra: com.theveloper.pixelplay.data.netease.info.NeteaseSongExtra,
+    onAlbumClick: () -> Unit,
+    onArtistClick: () -> Unit,
+    onSimilarClick: (com.theveloper.pixelplay.data.netease.info.NeteaseSimilarSong) -> Unit,
+) {
+    val dateFormat = remember { java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()) }
+    fun dateText(ms: Long): String = dateFormat.format(java.util.Date(ms))
+
+    // ── 基础信息 ──
+    val infoTiles = buildList {
+        if (extra.alias.isNotEmpty()) {
+            add(
+                SongInfoTile(
+                    label = stringResource(R.string.song_info_label_alias),
+                    value = extra.alias.joinToString(" / "),
+                    icon = Icons.Rounded.Label,
+                    wide = true
+                )
+            )
+        }
+        if (extra.transNames.isNotEmpty()) {
+            add(
+                SongInfoTile(
+                    label = stringResource(R.string.song_info_label_alias_translation),
+                    value = extra.transNames.joinToString(" / "),
+                    icon = Icons.Rounded.Translate,
+                    wide = true
+                )
+            )
+        }
+        extra.publishTimeMs?.let {
+            add(
+                SongInfoTile(
+                    label = stringResource(R.string.song_info_label_release_date),
+                    value = dateText(it),
+                    icon = Icons.Rounded.CalendarMonth
+                )
+            )
+        }
+        extra.popularity?.let {
+            add(
+                SongInfoTile(
+                    label = stringResource(R.string.song_info_label_popularity),
+                    value = "$it%",
+                    icon = Icons.Rounded.TrendingUp
+                )
+            )
+        }
+        extra.commentCount?.let {
+            add(
+                SongInfoTile(
+                    label = stringResource(R.string.song_info_label_comments),
+                    value = it.toString(),
+                    icon = Icons.Rounded.ChatBubbleOutline
+                )
+            )
+        }
+        extra.maxQuality?.let {
+            add(
+                SongInfoTile(
+                    label = stringResource(R.string.song_info_label_quality_max),
+                    value = it.uppercase(java.util.Locale.getDefault()),
+                    icon = Icons.Rounded.GraphicEq
+                )
+            )
+        }
+        add(
+            SongInfoTile(
+                label = stringResource(R.string.song_info_label_copyright),
+                value = stringResource(
+                    if (extra.playable) R.string.song_info_playable_yes else R.string.song_info_playable_no
+                ),
+                icon = if (extra.playable) Icons.Rounded.CheckCircle else Icons.Rounded.Block,
+                wide = true
+            )
+        )
+    }
+    InfoTileSection(title = stringResource(R.string.song_info_section_netease), tiles = infoTiles)
+
+    // ── 专辑信息 ──
+    extra.album?.let { album ->
+        val albumTiles = buildList {
+            add(
+                SongInfoTile(
+                    label = stringResource(R.string.song_field_album),
+                    value = album.name,
+                    icon = Icons.Rounded.Album,
+                    wide = true
+                )
+            )
+            album.company?.let {
+                add(
+                    SongInfoTile(
+                        label = stringResource(R.string.song_info_label_company),
+                        value = it,
+                        icon = Icons.Rounded.Business,
+                        wide = true
+                    )
+                )
+            }
+            album.publishTimeMs?.let {
+                add(
+                    SongInfoTile(
+                        label = stringResource(R.string.song_info_label_release_date),
+                        value = dateText(it),
+                        icon = Icons.Rounded.CalendarMonth
+                    )
+                )
+            }
+            album.trackCount?.let {
+                add(
+                    SongInfoTile(
+                        label = stringResource(R.string.song_info_label_track_count),
+                        value = it.toString(),
+                        icon = Icons.Rounded.MusicNote
+                    )
+                )
+            }
+        }
+        if (albumTiles.isNotEmpty()) {
+            InfoTileSection(title = stringResource(R.string.song_info_section_album_extra), tiles = albumTiles)
+            NeteaseActionRow(
+                icon = Icons.Rounded.Album,
+                text = stringResource(R.string.song_info_action_view_album),
+                onClick = onAlbumClick
+            )
+        }
+    }
+
+    // ── 歌手信息 ──
+    extra.artist?.let { artist ->
+        val artistTiles = buildList {
+            add(
+                SongInfoTile(
+                    label = stringResource(R.string.song_field_artist),
+                    value = artist.name,
+                    icon = Icons.Rounded.Person,
+                    wide = true
+                )
+            )
+            artist.fansCount?.let {
+                add(
+                    SongInfoTile(
+                        label = stringResource(R.string.song_info_label_fans),
+                        value = it.toString(),
+                        icon = Icons.Rounded.Person
+                    )
+                )
+            }
+        }
+        InfoTileSection(title = stringResource(R.string.song_info_section_artist_extra), tiles = artistTiles)
+        artist.bio?.takeIf { it.isNotBlank() }?.let { bio ->
+            Text(
+                text = bio.take(400),
+                style = MaterialTheme.typography.bodySmall,
+                fontFamily = LocalAppFontFamily.current,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        NeteaseActionRow(
+            icon = Icons.Rounded.Person,
+            text = stringResource(R.string.song_info_action_view_artist),
+            onClick = onArtistClick
+        )
+    }
+
+    // ── 歌曲百科 ──
+    extra.wikiSummary?.takeIf { it.isNotBlank() }?.let { wiki ->
+        var expanded by remember { mutableStateOf(false) }
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.song_info_section_wiki),
+                style = MaterialTheme.typography.titleSmall,
+                fontFamily = LocalAppFontFamily.current,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = wiki,
+                style = MaterialTheme.typography.bodySmall,
+                fontFamily = LocalAppFontFamily.current,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = if (expanded) Int.MAX_VALUE else 6,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { expanded = !expanded }
+            )
+        }
+    }
+
+    // ── 相似歌曲 ──
+    if (extra.similarSongs.isNotEmpty()) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.song_info_section_similar),
+                style = MaterialTheme.typography.titleSmall,
+                fontFamily = LocalAppFontFamily.current,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            extra.similarSongs.forEachIndexed { index, similar ->
+                NeteaseSimilarSongRow(
+                    index = index + 1,
+                    song = similar,
+                    onClick = { onSimilarClick(similar) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun NeteaseActionRow(
+    icon: ImageVector,
+    text: String,
+    onClick: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(Modifier.width(10.dp))
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyMedium,
+                fontFamily = LocalAppFontFamily.current,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.weight(1f)
+            )
+            Icon(
+                imageVector = Icons.Rounded.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                modifier = Modifier.size(18.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun NeteaseSimilarSongRow(
+    index: Int,
+    song: com.theveloper.pixelplay.data.netease.info.NeteaseSimilarSong,
+    onClick: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = index.toString(),
+                style = MaterialTheme.typography.labelMedium,
+                fontFamily = LocalAppFontFamily.current,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.width(20.dp)
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = song.name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontFamily = LocalAppFontFamily.current,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                val subtitle = listOfNotNull(
+                    song.artist.takeIf { it.isNotBlank() },
+                    song.albumName?.takeIf { it.isNotBlank() }
+                ).joinToString(" · ")
+                if (subtitle.isNotBlank()) {
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontFamily = LocalAppFontFamily.current,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            Icon(
+                imageVector = Icons.Rounded.PlayArrow,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp)
+            )
         }
     }
 }

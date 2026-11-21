@@ -66,7 +66,7 @@ import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.github.GitHubRelease
 import com.theveloper.pixelplay.data.lx.LxSourceTester
 import com.theveloper.pixelplay.presentation.components.CollapsibleCommonTopBar
-import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
+import com.theveloper.pixelplay.presentation.components.LocalMiniPlayerSlotHeight
 import com.theveloper.pixelplay.presentation.components.ReleaseNotesBody
 import com.theveloper.pixelplay.presentation.viewmodel.MarketJsEntryUi
 import com.theveloper.pixelplay.presentation.viewmodel.ReleaseState
@@ -86,6 +86,39 @@ fun SourceMarketScreen(
     viewModel: SourceMarketViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val updateAlerts by viewModel.updateAlerts.collectAsStateWithLifecycle()
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    // ⚡ 脚本更新提醒（lx updateAlert）：脚本加载时若作者声明了新版本，这里弹出一次
+    updateAlerts.firstOrNull()?.let { alert ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { viewModel.dismissUpdateAlert(alert.fileName) },
+            title = { Text(androidx.compose.ui.res.stringResource(R.string.lx_update_alert_title, alert.scriptName)) },
+            text = { Text(alert.log.ifBlank { stringResource(R.string.lx_update_alert_default_log) }) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        alert.updateUrl.takeIf { it.isNotBlank() }?.let { url ->
+                            runCatching {
+                                context.startActivity(
+                                    android.content.Intent(
+                                        android.content.Intent.ACTION_VIEW,
+                                        android.net.Uri.parse(url)
+                                    )
+                                )
+                            }
+                        }
+                        viewModel.dismissUpdateAlert(alert.fileName)
+                    }
+                ) { Text(stringResource(R.string.lx_update_alert_go)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.dismissUpdateAlert(alert.fileName) }) {
+                    Text(stringResource(R.string.lx_update_alert_ignore))
+                }
+            }
+        )
+    }
 
     val density = LocalDensity.current
     val coroutineScope = rememberCoroutineScope()
@@ -154,7 +187,7 @@ fun SourceMarketScreen(
                 top = currentTopBarHeightDp + 8.dp,
                 start = 16.dp,
                 end = 16.dp,
-                bottom = MiniPlayerHeight + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp
+                bottom = LocalMiniPlayerSlotHeight.current + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp
             ),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -218,7 +251,7 @@ fun SourceMarketScreen(
             hostState = snackbarHostState,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = MiniPlayerHeight + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding())
+                .padding(bottom = LocalMiniPlayerSlotHeight.current + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding())
         )
     }
 

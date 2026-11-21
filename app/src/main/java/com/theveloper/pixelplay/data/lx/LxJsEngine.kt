@@ -150,6 +150,22 @@ class LxJsEngine @Inject constructor(
     /** 聚合后的音源信息（多脚本同名源后者覆盖，仅用于 UI 展示） */
     @Volatile private var sources: Map<String, LxSourceInfo> = emptyMap()
 
+    /** 脚本更新提醒（lx `updateAlert`）：脚本作者可在 init 时提示新版本与更新地址。 */
+    data class LxUpdateAlert(
+        val fileName: String,
+        val scriptName: String,
+        val log: String,
+        val updateUrl: String,
+    )
+
+    private val _updateAlerts = MutableStateFlow<List<LxUpdateAlert>>(emptyList())
+    val updateAlerts: StateFlow<List<LxUpdateAlert>> = _updateAlerts.asStateFlow()
+
+    /** 用户忽略某个脚本的更新提醒（本次运行不再显示；脚本重新加载后会再次提示） */
+    fun dismissUpdateAlert(fileName: String) {
+        _updateAlerts.value = _updateAlerts.value.filterNot { it.fileName == fileName }
+    }
+
     // ⚡ 音源临时开关：source -> enabled（仅运行时生效，不持久化；默认全部启用）
     private val sourceEnabled = ConcurrentHashMap<String, Boolean>()
     private val _sourceToggles = MutableStateFlow<Map<String, Boolean>>(emptyMap())
@@ -302,6 +318,8 @@ class LxJsEngine @Inject constructor(
 
     suspend fun ready(): Boolean = mutex.withLock {
         lastError = null
+        // 每次（重新）加载清空上一轮的更新提醒，脚本会重新发出
+        _updateAlerts.value = emptyList()
         if (inited && instances.isNotEmpty()) return@withLock true
         if (!loaderInited) {
             try {
@@ -866,6 +884,25 @@ class LxJsEngine @Inject constructor(
                     val key = dataJson ?: return@JSCallFunction null
                     instanceOf(c2)?.scriptRequests?.remove(key)?.cancel()
                 }
+                // ⚡ 对齐 lx 协议：脚本可通过 lx.send('updateAlert', { log, updateUrl }) 提示更新
+                "updateAlert" -> {
+                    val inst = instanceOf(c2)
+                    if (inst != null && !dataJson.isNullOrBlank()) {
+                        runCatching {
+                            val obj = JSONObject(dataJson)
+                            val alert = LxUpdateAlert(
+                                fileName = inst.fileName,
+                                scriptName = inst.scriptInfo.name.ifBlank { inst.fileName },
+                                log = obj.optString("log"),
+                                updateUrl = obj.optString("updateUrl"),
+                            )
+                            if (_updateAlerts.value.none { it.fileName == alert.fileName }) {
+                                Log.i(TAG, "updateAlert from ${inst.fileName}: ${alert.log}")
+                                _updateAlerts.value = _updateAlerts.value + alert
+                            }
+                        }
+                    }
+                }
             }
             null
         })
@@ -1266,6 +1303,7 @@ class LxJsEngine @Inject constructor(
     (function () {
         var _initedJson = null;
         var _initedDone = false;
+        var _updateAlertSent = false;
 
         // ── console ──
         function _pxStr(a) {
@@ -1511,7 +1549,16 @@ class LxJsEngine @Inject constructor(
                         _initedDone = true;
                         resolve();
                     } else if (eventName === EVENT_NAMES.updateAlert) {
-                        reject(new Error('updateAlert is not supported'));
+                        // 对齐 lx：每个脚本实例只允许提示一次，宿主弹窗引导更新
+                        try {
+                            if (!_updateAlertSent) {
+                                _updateAlertSent = true;
+                                __pixelplay_native_call__('updateAlert', JSON.stringify(data || {}));
+                            }
+                            resolve();
+                        } catch (e) {
+                            reject(e);
+                        }
                     } else {
                         reject(new Error('The event is not supported: ' + eventName));
                     }

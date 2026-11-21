@@ -129,6 +129,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.lerp as lerpColor
@@ -268,7 +269,6 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import com.theveloper.pixelplay.presentation.viewmodel.StablePlayerState
 import com.theveloper.pixelplay.data.preferences.dataStore
-import androidx.compose.foundation.verticalScroll
 import com.theveloper.pixelplay.presentation.components.SyncedLyricsList
 import com.theveloper.pixelplay.presentation.components.PlainLyricsLine
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -479,6 +479,15 @@ fun FullPlayerContent(
     val playerStyle by playerViewModel.playerStyle.collectAsStateWithLifecycle()
     val playerAccentBackground by playerViewModel.playerAccentBackground.collectAsStateWithLifecycle()
     val playerMergeControls by playerViewModel.playerMergeControls.collectAsStateWithLifecycle()
+    // ⚡ Expressive 图形库：封面 / 控制按钮形状（设置页可选，默认 Rhythm 同款）
+    val expressivePlayerArtShapeId by playerViewModel.expressivePlayerArtShape.collectAsStateWithLifecycle()
+    val expressivePlayerControlsShapeId by playerViewModel.expressivePlayerControlsShape.collectAsStateWithLifecycle()
+    val expressivePlayerArtShape = remember(expressivePlayerArtShapeId) {
+        ExpressiveShapes.shapeFor(expressivePlayerArtShapeId, ExpressiveShapes.DEFAULT_PLAYER_ART)
+    }
+    val expressivePlayerControlsShape = remember(expressivePlayerControlsShapeId) {
+        ExpressiveShapes.shapeFor(expressivePlayerControlsShapeId, ExpressiveShapes.DEFAULT_PLAYER_CONTROLS)
+    }
     // ⚡ 倍速状态：Expressive 布局与平行布局左侧栏需要和经典控制栏一样显示倍速按钮
     val playbackSpeed by playerViewModel.playbackSpeed.collectAsStateWithLifecycle()
     val showPlaybackSpeedButton by playerViewModel.showPlaybackSpeedButton.collectAsStateWithLifecycle()
@@ -1666,7 +1675,10 @@ fun FullPlayerContent(
                         onShowSongInfo = { showPlayerMoreSheet = true },
                         isBuffering = bufferingState.isBuffering,
                         isTranscoding = bufferingState.isTranscoding,
-                        transcodeProgressPercent = bufferingState.transcodeProgressPercent
+                        transcodeProgressPercent = bufferingState.transcodeProgressPercent,
+                        // ⚡ 图形库：封面 / 上一曲·下一曲按钮形状
+                        playerArtShape = expressivePlayerArtShape,
+                        playerControlsShape = expressivePlayerControlsShape
                     )
                 }
 
@@ -2973,7 +2985,10 @@ private fun FullPlayerExpressiveContent(
     //    DFF 等转码时显示进度胶囊
     isBuffering: Boolean = false,
     isTranscoding: Boolean = false,
-    transcodeProgressPercent: Int = 0
+    transcodeProgressPercent: Int = 0,
+    // ⚡ 图形库（设置页可切换）：播放器封面 / 上一曲·下一曲按钮
+    playerArtShape: Shape = ExpressiveShapes.PlayerArt,
+    playerControlsShape: Shape = ExpressiveShapes.PlayerControls
 ) {
     val isPlaying = isPlayingProvider()
     var showSpeedSheet by remember { mutableStateOf(false) }
@@ -3243,8 +3258,8 @@ private fun FullPlayerExpressiveContent(
                                 scaleX = artworkScale
                                 scaleY = artworkScale
                             }
-                            // Rhythm Expressive Shapes 默认：大封面用 MaterialShapes BUN 形状
-                            .clip(ExpressiveShapes.PlayerArt)
+                            // Rhythm Expressive Shapes：大封面形状来自图形库设置
+                            .clip(playerArtShape)
                     ) {
                         albumCoverSection(Modifier.fillMaxSize())
                     }
@@ -3364,6 +3379,7 @@ private fun FullPlayerExpressiveContent(
                                     container = effectiveSkipContainer,
                                     content = skipContent,
                                     glassModifier = glassModifier,
+                                    shape = playerControlsShape,
                                     onClick = onNext
                                 )
                             } else {
@@ -3386,6 +3402,7 @@ private fun FullPlayerExpressiveContent(
                                     container = effectiveSkipContainer,
                                     content = skipContent,
                                     glassModifier = glassModifier,
+                                    shape = playerControlsShape,
                                     onClick = onPrevious
                                 )
                                 // 进度区：复用现有进度条（含时间标签 / 音质信息 / 拖动 seek）
@@ -3446,6 +3463,7 @@ private fun ExpressiveTransportButton(
     container: Color,
     content: Color,
     glassModifier: Modifier = Modifier,
+    shape: Shape = ExpressiveShapes.PlayerControls,
     onClick: () -> Unit
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -3465,7 +3483,7 @@ private fun ExpressiveTransportButton(
                 scaleX = scale
                 scaleY = scale
             }
-            .clip(ExpressiveShapes.PlayerControls)
+            .clip(shape)
             .background(container)
             .then(glassModifier)
             .clickable(
@@ -5630,46 +5648,41 @@ private fun FullPlayerParallelLayout(
                     .weight(1f)
                     .fillMaxHeight()
             ) {
-                // ⚡ 平行布局左栏宽度约为半屏，封面若只按宽度取 0.7，在「宽而矮」的平板横屏下
-                //   （大封面 + 歌曲信息 + 进度条 + 180dp 控制区）总高会超出可用高度，
-                //   底部那排按钮（收藏 / 下载 / 评论等）就被挤出屏幕。这里与竖屏布局同策略：
-                //   封面边长取「宽度 0.7」与「可用高度扣掉底部预留」的较小者。
-                val metadataProgressHeight = 100.dp
-                val controlsSectionMinHeight = 180.dp
-                val columnVerticalPadding = 16.dp
-                val coverBottomSpacing = 16.dp
-                val bottomReservedHeight =
-                    metadataProgressHeight + controlsSectionMinHeight + 20.dp +
-                        columnVerticalPadding * 2 + coverBottomSpacing
-                val coverSize = minOf(
-                    maxWidth * 0.7f,
-                    (maxHeight - bottomReservedHeight).coerceAtLeast(96.dp)
-                )
+                // ⚡ 平行布局左栏是「固定视口」：不再使用 verticalScroll（此前在小高度平板上
+                //   会把整块播放器当成可滚动内容，用户能上下拖动、布局也跟着跑）。
+                //   这里改为封面区 weight(1f) 吸收剩余高度：底部信息 / 进度 / 控制栏保持
+                //   自然高度固定在底部，封面按「栏宽 × 剩余高度」取正方形并居中，
+                //   永远不会把控制栏顶出视口，也不需要滚动。
+                val columnVerticalPadding = 12.dp
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        // 兜底：极小高度下仍可滚动查看
-                        .verticalScroll(androidx.compose.foundation.rememberScrollState())
                         .padding(horizontal = 24.dp, vertical = columnVerticalPadding),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Album cover — 尺寸随可用高度收敛，保证底部控制区不被挤出屏幕
-                    Box(modifier = Modifier.size(coverSize)) {
-                        albumCoverSection(Modifier.fillMaxSize())
+                    // Album cover — 吸收剩余空间，边长同时受栏宽与剩余高度约束
+                    BoxWithConstraints(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .padding(vertical = 4.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        val coverSize = minOf(maxWidth * 0.72f, maxHeight)
+                        albumCoverSection(Modifier.size(coverSize))
                     }
 
-                    Spacer(Modifier.height(coverBottomSpacing))
+                    Spacer(Modifier.height(4.dp))
 
                     // Song metadata
                     songMetadataSection()
 
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(8.dp))
 
                     // Progress bar
                     playerProgressSection()
 
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(6.dp))
 
                     // Controls
                     controlsSection()

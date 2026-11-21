@@ -712,6 +712,17 @@ class NeteaseRepository @Inject constructor(
         }
     }
 
+    /** 公开接口解析歌曲首位歌手的 id（无需登录），用于在线歌曲「查看歌手」跳转。 */
+    suspend fun getNeteaseArtistId(songId: Long): Long? = withContext(Dispatchers.IO) {
+        runCatching {
+            val map = net.moriafly.ncm.NcmApi.songDetail(listOf(songId.toString())).getOrThrow()
+            val root = JSONObject(map)
+            root.optJSONArray("songs")?.optJSONObject(0)
+                ?.optJSONArray("ar")?.optJSONObject(0)?.optLong("id", 0L)
+                ?.takeIf { it > 0L }
+        }.getOrNull()
+    }
+
     /** 按网易云歌曲 ID 批量取详情并映射为 Song（一起听远端队列回放用） */
     suspend fun getNeteaseSongsByIds(ids: List<Long>): List<Song> {
         if (ids.isEmpty()) return emptyList()

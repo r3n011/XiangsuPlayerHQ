@@ -128,7 +128,7 @@ import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.ai.PlaylistEvaluation
 import com.theveloper.pixelplay.data.model.Playlist
 import com.theveloper.pixelplay.data.model.Song
-import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
+import com.theveloper.pixelplay.presentation.components.LocalMiniPlayerSlotHeight
 import com.theveloper.pixelplay.presentation.components.PlaylistBottomSheet
 import com.theveloper.pixelplay.presentation.components.QueuePlaylistSongItem
 import com.theveloper.pixelplay.presentation.components.SongPickerBottomSheet
@@ -470,10 +470,12 @@ fun PlaylistDetailScreen(
             ) {
                 val actionButtonsHeight = 42.dp
                 val playbackControlBottomPadding = if (isFolderPlaylist) 8.dp else 6.dp
+                // ⚡ 播放/随机/下载按钮高 76dp，容器必须同高再留底边距；
+                //    此前 Row 固定 62dp 导致按钮被裁切、与下方操作行叠在一起（视觉很乱）。
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(62.dp)
+                        .height(76.dp + playbackControlBottomPadding)
                         .padding(horizontal = 20.dp)
                         .padding(bottom = playbackControlBottomPadding),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -931,7 +933,7 @@ fun PlaylistDetailScreen(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                             contentPadding = PaddingValues(
                                 top = 12.dp,
-                                bottom = MiniPlayerHeight + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp,
+                                bottom = LocalMiniPlayerSlotHeight.current + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp,
                                 end = 0.dp
                             ).let {
                                 val showScrollBar = LocalShowScrollbar.current && (listState.canScrollForward || listState.canScrollBackward)
@@ -1038,7 +1040,7 @@ fun PlaylistDetailScreen(
                             modifier = Modifier
                                 .align(Alignment.CenterEnd)
                                 .padding(
-                                    bottom = if (playerStableState.currentSong != null) MiniPlayerHeight + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 20.dp else WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp,
+                                    bottom = if (playerStableState.currentSong != null) LocalMiniPlayerSlotHeight.current + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 20.dp else WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp,
                                     end = 14.dp,
                                     top = 18.dp // Increased to 16.dp as requested
                                 )

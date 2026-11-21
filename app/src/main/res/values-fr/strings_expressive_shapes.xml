@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Expressive player shape library -->
+    <string name="setcat_expressive_shapes_group">"Bibliothèque de formes"</string>
+    <string name="setcat_expressive_shape_player_art">"Pochette du lecteur"</string>
+    <string name="setcat_expressive_shape_player_controls">"Boutons de contrôle"</string>
+    <string name="setcat_expressive_shape_mini_player">"Pochette du mini-lecteur"</string>
+    <string name="setcat_expressive_shape_picker_title">"Choisir une forme"</string>
+    <string name="setcat_expressive_shape_picker_desc">"Choisissez une forme Material 3 Expressive, appliquée immédiatement"</string>
+    <string name="setcat_expressive_shape_preset">"Préréglage de formes"</string>
+    <string name="setcat_expressive_shape_preset_desc">"Applique un ensemble de formes au lecteur, aux commandes et au mini-lecteur"</string>
+    <string name="shape_preset_rhythm">"Par défaut Rhythm"</string>
+    <string name="shape_preset_soft">"Doux"</string>
+    <string name="shape_preset_geometric">"Géométrique"</string>
+    <string name="shape_preset_floral">"Floral"</string>
+    <string name="shape_name_circle">"Cercle"</string>
+    <string name="shape_name_square">"Carré"</string>
+    <string name="shape_name_pentagon">"Pentagone"</string>
+    <string name="shape_name_diamond">"Losange"</string>
+    <string name="shape_name_flower">"Fleur"</string>
+    <string name="shape_name_clover_4">"Trèfle à 4 feuilles"</string>
+    <string name="shape_name_clover_8">"Trèfle à 8 feuilles"</string>
+    <string name="shape_name_heart">"Cœur"</string>
+    <string name="shape_name_boom">"Explosion"</string>
+    <string name="shape_name_soft_boom">"Explosion douce"</string>
+    <string name="shape_name_cookie_4">"Cookie 4"</string>
+    <string name="shape_name_cookie_6">"Cookie 6"</string>
+    <string name="shape_name_cookie_9">"Cookie 9"</string>
+    <string name="shape_name_cookie_12">"Cookie 12"</string>
+    <string name="shape_name_bun">"Brioche"</string>
+    <string name="shape_name_gem">"Gemme"</string>
+    <string name="shape_name_pixel_circle">"Cercle pixel"</string>
+</resources>

@@ -253,6 +253,7 @@ import com.theveloper.pixelplay.presentation.viewmodel.ApiSettingsViewModel
 import com.theveloper.pixelplay.data.ai.GeminiModel
 import com.theveloper.pixelplay.presentation.components.CollapsibleCommonTopBar
 import com.theveloper.pixelplay.presentation.components.CustomPlayerBackground
+import com.theveloper.pixelplay.presentation.components.ExpressiveShapes
 import com.theveloper.pixelplay.presentation.components.ExpressiveTopBarContent
 import com.theveloper.pixelplay.presentation.components.FileExplorerDialog
 import com.theveloper.pixelplay.presentation.components.GlyphMatrixPreview
@@ -317,6 +318,9 @@ fun PlayerLyricsAppearanceScreen(
     // 搬入的「迷你播放条」子节用它写入 DataStore（原分支同名局部变量）
     val context = LocalContext.current
     val startupScope = rememberCoroutineScope()
+    // ⚡ 图形库：当前打开的图形选择目标（player_art / player_controls / mini_player）
+    var expressiveShapeDialogTarget by remember { mutableStateOf<String?>(null) }
+    var showShapePresetDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -512,6 +516,40 @@ fun PlayerLyricsAppearanceScreen(
                             checked = uiState.playerMergeControls,
                             onCheckedChange = settingsViewModel::setPlayerMergeControls,
                             leadingIcon = { Icon(Icons.Rounded.MergeType, null, tint = MaterialTheme.colorScheme.secondary) }
+                        )
+
+                        // ⚡ 图形库（对齐 Rhythm ExpressiveShapesSettings）：
+                        //    播放器封面 / 控制按钮 / 迷你播放器封面均可单独选形状，另有整套预设
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            text = stringResource(R.string.setcat_expressive_shapes_group),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 8.dp)
+                        )
+                        ExpressiveShapeSettingItem(
+                            icon = Icons.Rounded.Album,
+                            title = stringResource(R.string.setcat_expressive_shape_player_art),
+                            currentShapeId = uiState.expressivePlayerArtShape,
+                            onClick = { expressiveShapeDialogTarget = "player_art" }
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        ExpressiveShapeSettingItem(
+                            icon = Icons.Rounded.PlayArrow,
+                            title = stringResource(R.string.setcat_expressive_shape_player_controls),
+                            currentShapeId = uiState.expressivePlayerControlsShape,
+                            onClick = { expressiveShapeDialogTarget = "player_controls" }
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        ExpressiveShapeSettingItem(
+                            icon = Icons.Rounded.MusicNote,
+                            title = stringResource(R.string.setcat_expressive_shape_mini_player),
+                            currentShapeId = uiState.expressiveMiniPlayerShape,
+                            onClick = { expressiveShapeDialogTarget = "mini_player" }
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        ExpressiveShapePresetRow(
+                            onClick = { showShapePresetDialog = true }
                         )
                     }
 
@@ -1063,6 +1101,349 @@ fun PlayerLyricsAppearanceScreen(
             Spacer(modifier = Modifier.height(MiniPlayerHeight + 16.dp))
         }
     }
+
+    // ⚡ 图形库：单项形状选择 / 整套预设
+    expressiveShapeDialogTarget?.let { target ->
+        val currentId = when (target) {
+            "player_controls" -> uiState.expressivePlayerControlsShape
+            "mini_player" -> uiState.expressiveMiniPlayerShape
+            else -> uiState.expressivePlayerArtShape
+        }
+        ExpressiveShapePickerDialog(
+            currentShapeId = currentId,
+            onSelect = { shapeId ->
+                when (target) {
+                    "player_controls" -> settingsViewModel.setExpressivePlayerControlsShape(shapeId)
+                    "mini_player" -> settingsViewModel.setExpressiveMiniPlayerShape(shapeId)
+                    else -> settingsViewModel.setExpressivePlayerArtShape(shapeId)
+                }
+                expressiveShapeDialogTarget = null
+            },
+            onDismiss = { expressiveShapeDialogTarget = null }
+        )
+    }
+
+    if (showShapePresetDialog) {
+        ExpressiveShapePresetDialog(
+            currentArt = uiState.expressivePlayerArtShape,
+            currentControls = uiState.expressivePlayerControlsShape,
+            currentMini = uiState.expressiveMiniPlayerShape,
+            onSelect = { presetKey ->
+                settingsViewModel.applyExpressiveShapePreset(presetKey)
+                showShapePresetDialog = false
+            },
+            onDismiss = { showShapePresetDialog = false }
+        )
+    }
+}
+
+// ──────────────────────────── Expressive 图形库 ────────────────────────────
+
+/** 单行设置项：左侧为当前形状预览，右侧显示形状名称。 */
+@Composable
+private fun ExpressiveShapeSettingItem(
+    icon: ImageVector,
+    title: String,
+    currentShapeId: String,
+    onClick: () -> Unit
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .clickable(onClick = onClick)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(modifier = Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+                Surface(
+                    modifier = Modifier.size(30.dp),
+                    shape = ExpressiveShapes.rememberShape(currentShapeId),
+                    color = MaterialTheme.colorScheme.secondaryContainer
+                ) {}
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = expressiveShapeName(currentShapeId),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Icon(
+                imageVector = Icons.Rounded.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}
+
+/** 整套预设入口。 */
+@Composable
+private fun ExpressiveShapePresetRow(onClick: () -> Unit) {
+    Surface(
+        color = MaterialTheme.colorScheme.tertiaryContainer,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .clickable(onClick = onClick)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Palette,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                modifier = Modifier.size(22.dp)
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.setcat_expressive_shape_preset),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                )
+                Text(
+                    text = stringResource(R.string.setcat_expressive_shape_preset_desc),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f)
+                )
+            }
+            Icon(
+                imageVector = Icons.Rounded.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}
+
+/** 形状选择弹窗：Material 3 Expressive 形状网格（4 列）。 */
+@Composable
+private fun ExpressiveShapePickerDialog(
+    currentShapeId: String,
+    onSelect: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(
+            shape = RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .heightIn(max = 560.dp)
+                    .verticalScroll(rememberScrollState())
+                    .padding(20.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.setcat_expressive_shape_picker_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = stringResource(R.string.setcat_expressive_shape_picker_desc),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(16.dp))
+                ExpressiveShapes.availableShapeIds.chunked(4).forEach { rowIds ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        rowIds.forEach { shapeId ->
+                            val selected = shapeId == currentShapeId
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .clickable { onSelect(shapeId) }
+                                    .padding(vertical = 8.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Surface(
+                                    modifier = Modifier.size(48.dp),
+                                    shape = ExpressiveShapes.rememberShape(shapeId),
+                                    color = if (selected) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.surfaceContainerLowest
+                                    }
+                                ) {}
+                                Spacer(Modifier.height(6.dp))
+                                Text(
+                                    text = expressiveShapeName(shapeId),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (selected) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                        repeat(4 - rowIds.size) { Spacer(Modifier.weight(1f)) }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                }
+            }
+        }
+    }
+}
+
+/** 整套预设弹窗：Rhythm 默认 / 柔和 / 几何 / 花卉。 */
+@Composable
+private fun ExpressiveShapePresetDialog(
+    currentArt: String,
+    currentControls: String,
+    currentMini: String,
+    onSelect: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val currentTriple = Triple(currentArt, currentControls, currentMini)
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(
+            shape = RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Text(
+                    text = stringResource(R.string.setcat_expressive_shape_preset),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = stringResource(R.string.setcat_expressive_shape_preset_desc),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(12.dp))
+                ExpressiveShapes.presetKeys.forEach { presetKey ->
+                    val (art, controls, mini) = ExpressiveShapes.presetShapes(presetKey)
+                    val selected = currentTriple == Triple(art, controls, mini)
+                    Surface(
+                        color = if (selected) {
+                            MaterialTheme.colorScheme.primaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.surfaceContainerLow
+                        },
+                        shape = RoundedCornerShape(20.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                            .clickable { onSelect(presetKey) }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // 三枚小预览：播放器封面 / 控制按钮 / 迷你播放器
+                            listOf(art, controls, mini).forEachIndexed { index, shapeId ->
+                                Surface(
+                                    modifier = Modifier.size(if (index == 0) 36.dp else 26.dp),
+                                    shape = ExpressiveShapes.rememberShape(shapeId),
+                                    color = if (selected) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.secondaryContainer
+                                    }
+                                ) {}
+                                if (index < 2) Spacer(Modifier.width(6.dp))
+                            }
+                            Spacer(Modifier.width(16.dp))
+                            Text(
+                                text = expressiveShapePresetName(presetKey),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = if (selected) {
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface
+                                },
+                                modifier = Modifier.weight(1f)
+                            )
+                            if (selected) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Check,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun expressiveShapeName(shapeId: String): String {
+    val resId = when (shapeId) {
+        "CIRCLE" -> R.string.shape_name_circle
+        "SQUARE" -> R.string.shape_name_square
+        "PENTAGON" -> R.string.shape_name_pentagon
+        "DIAMOND" -> R.string.shape_name_diamond
+        "FLOWER" -> R.string.shape_name_flower
+        "CLOVER_4" -> R.string.shape_name_clover_4
+        "CLOVER_8" -> R.string.shape_name_clover_8
+        "HEART" -> R.string.shape_name_heart
+        "BOOM" -> R.string.shape_name_boom
+        "SOFT_BOOM" -> R.string.shape_name_soft_boom
+        "COOKIE_4" -> R.string.shape_name_cookie_4
+        "COOKIE_6" -> R.string.shape_name_cookie_6
+        "COOKIE_9" -> R.string.shape_name_cookie_9
+        "COOKIE_12" -> R.string.shape_name_cookie_12
+        "BUN" -> R.string.shape_name_bun
+        "GEM" -> R.string.shape_name_gem
+        "PIXEL_CIRCLE" -> R.string.shape_name_pixel_circle
+        else -> null
+    }
+    return resId?.let { stringResource(it) } ?: shapeId
+}
+
+@Composable
+private fun expressiveShapePresetName(presetKey: String): String {
+    val resId = when (presetKey) {
+        ExpressiveShapes.PRESET_RHYTHM -> R.string.shape_preset_rhythm
+        ExpressiveShapes.PRESET_SOFT -> R.string.shape_preset_soft
+        ExpressiveShapes.PRESET_GEOMETRIC -> R.string.shape_preset_geometric
+        ExpressiveShapes.PRESET_FLORAL -> R.string.shape_preset_floral
+        else -> null
+    }
+    return resId?.let { stringResource(it) } ?: presetKey
 }
 
 // ────────────────────────────── 顶栏 ──────────────────────────────

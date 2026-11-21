@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="lx_update_alert_title">"Доступна новая версия «%1$s»"</string>
+    <string name="lx_update_alert_default_log">"Автор скрипта источника выпустил новую версию. Обновите для лучшей стабильности."</string>
+    <string name="lx_update_alert_go">"Обновить"</string>
+    <string name="lx_update_alert_ignore">"Игнорировать"</string>
     <!-- Russian translations for strings_localization. -->
     <string name="ui_12_h_34_min">"12 ч 34 мин"</string>
     <string name="ui_12_songs_100_plays_10_h">"12 песен · 100 воспроизведений · 10 ч"</string>

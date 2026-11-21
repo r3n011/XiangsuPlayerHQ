@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Expressive player shape library -->
+    <string name="setcat_expressive_shapes_group">"Pustaka bentuk"</string>
+    <string name="setcat_expressive_shape_player_art">"Sampul pemutar"</string>
+    <string name="setcat_expressive_shape_player_controls">"Tombol kontrol"</string>
+    <string name="setcat_expressive_shape_mini_player">"Sampul pemutar mini"</string>
+    <string name="setcat_expressive_shape_picker_title">"Pilih bentuk"</string>
+    <string name="setcat_expressive_shape_picker_desc">"Pilih bentuk Material 3 Expressive; langsung diterapkan"</string>
+    <string name="setcat_expressive_shape_preset">"Preset bentuk"</string>
+    <string name="setcat_expressive_shape_preset_desc">"Terapkan satu set bentuk untuk pemutar, kontrol, dan pemutar mini"</string>
+    <string name="shape_preset_rhythm">"Default Rhythm"</string>
+    <string name="shape_preset_soft">"Lembut"</string>
+    <string name="shape_preset_geometric">"Geometris"</string>
+    <string name="shape_preset_floral">"Bunga"</string>
+    <string name="shape_name_circle">"Lingkaran"</string>
+    <string name="shape_name_square">"Persegi"</string>
+    <string name="shape_name_pentagon">"Segi lima"</string>
+    <string name="shape_name_diamond">"Wajik"</string>
+    <string name="shape_name_flower">"Bunga"</string>
+    <string name="shape_name_clover_4">"Semanggi 4 daun"</string>
+    <string name="shape_name_clover_8">"Semanggi 8 daun"</string>
+    <string name="shape_name_heart">"Hati"</string>
+    <string name="shape_name_boom">"Ledakan"</string>
+    <string name="shape_name_soft_boom">"Ledakan lembut"</string>
+    <string name="shape_name_cookie_4">"Kue 4"</string>
+    <string name="shape_name_cookie_6">"Kue 6"</string>
+    <string name="shape_name_cookie_9">"Kue 9"</string>
+    <string name="shape_name_cookie_12">"Kue 12"</string>
+    <string name="shape_name_bun">"Roti"</string>
+    <string name="shape_name_gem">"Permata"</string>
+    <string name="shape_name_pixel_circle">"Lingkaran piksel"</string>
+</resources>

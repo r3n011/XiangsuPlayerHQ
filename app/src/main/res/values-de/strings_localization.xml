@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="lx_update_alert_title">"Neue Version für „%1$s“"</string>
+    <string name="lx_update_alert_default_log">"Der Autor des Quellskripts hat eine neue Version veröffentlicht. Aktualisiere für bessere Stabilität."</string>
+    <string name="lx_update_alert_go">"Aktualisieren"</string>
+    <string name="lx_update_alert_ignore">"Ignorieren"</string>
     <!-- German translations for strings_localization. -->
     <string name="ui_12_h_34_min">"12 Std. 34 Min."</string>
     <string name="ui_12_songs_100_plays_10_h">"12 Songs · 100 Wiedergaben · 10 Std."</string>

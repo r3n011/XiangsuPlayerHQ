@@ -48,8 +48,46 @@ class SongInfoBottomSheetViewModel @Inject constructor(
     private val transferStateStore: PhoneWatchTransferStateStore,
     private val musicDao: MusicDao,
     private val metadataAutoCompleter: com.theveloper.pixelplay.data.musicbrainz.MetadataAutoCompleter,
+    private val neteaseSongInfoRepository: com.theveloper.pixelplay.data.netease.info.NeteaseSongInfoRepository,
+    private val neteaseRepository: com.theveloper.pixelplay.data.netease.NeteaseRepository,
     @ApplicationContext private val appContext: Context,
 ) : ViewModel() {
+
+    // ── 网易云歌曲扩展信息（歌曲信息页 P0/P1）────────────────────────────
+    private val _neteaseExtra = MutableStateFlow<com.theveloper.pixelplay.data.netease.info.NeteaseSongExtra?>(null)
+    val neteaseExtra: StateFlow<com.theveloper.pixelplay.data.netease.info.NeteaseSongExtra?> =
+        _neteaseExtra.asStateFlow()
+
+    private val _neteaseExtraLoading = MutableStateFlow(false)
+    val neteaseExtraLoading: StateFlow<Boolean> = _neteaseExtraLoading.asStateFlow()
+
+    private var neteaseLoadJob: kotlinx.coroutines.Job? = null
+
+    /** 拉取网易云扩展信息（仅对网易云歌曲生效；失败静默降级为 null） */
+    fun loadNeteaseExtra(song: Song) {
+        val neteaseId = song.neteaseId ?: neteaseIdFromUri(song.contentUriString)
+        neteaseLoadJob?.cancel()
+        _neteaseExtra.value = null
+        if (neteaseId == null || neteaseId <= 0L) {
+            _neteaseExtraLoading.value = false
+            return
+        }
+        _neteaseExtraLoading.value = true
+        neteaseLoadJob = viewModelScope.launch {
+            val data = runCatching { neteaseSongInfoRepository.load(neteaseId) }.getOrNull()
+            _neteaseExtra.value = data
+            _neteaseExtraLoading.value = false
+        }
+    }
+
+    /** 把网易云相似歌曲 id 补全为可播放的 Song（网络失败返回空列表） */
+    suspend fun resolveNeteaseSongs(ids: List<Long>): List<Song> =
+        runCatching { neteaseRepository.getNeteaseSongsByIds(ids) }.getOrDefault(emptyList())
+
+    private fun neteaseIdFromUri(uri: String?): Long? {
+        if (uri.isNullOrBlank() || !uri.startsWith("netease://")) return null
+        return uri.removePrefix("netease://").substringBefore('/').toLongOrNull()
+    }
 
     data class SongLocationInfo(
         val label: String,

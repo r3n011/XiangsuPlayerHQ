@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Expressive player shape library -->
+    <string name="setcat_expressive_shapes_group">"Biblioteca de formas"</string>
+    <string name="setcat_expressive_shape_player_art">"Portada del reproductor"</string>
+    <string name="setcat_expressive_shape_player_controls">"Botones de control"</string>
+    <string name="setcat_expressive_shape_mini_player">"Portada del mini reproductor"</string>
+    <string name="setcat_expressive_shape_picker_title">"Elegir una forma"</string>
+    <string name="setcat_expressive_shape_picker_desc">"Elige una forma de Material 3 Expressive; se aplica al instante"</string>
+    <string name="setcat_expressive_shape_preset">"Preajuste de formas"</string>
+    <string name="setcat_expressive_shape_preset_desc">"Aplica un conjunto de formas al reproductor, los controles y el mini reproductor"</string>
+    <string name="shape_preset_rhythm">"Predeterminado de Rhythm"</string>
+    <string name="shape_preset_soft">"Suave"</string>
+    <string name="shape_preset_geometric">"Geométrico"</string>
+    <string name="shape_preset_floral">"Floral"</string>
+    <string name="shape_name_circle">"Círculo"</string>
+    <string name="shape_name_square">"Cuadrado"</string>
+    <string name="shape_name_pentagon">"Pentágono"</string>
+    <string name="shape_name_diamond">"Rombo"</string>
+    <string name="shape_name_flower">"Flor"</string>
+    <string name="shape_name_clover_4">"Trébol de 4 hojas"</string>
+    <string name="shape_name_clover_8">"Trébol de 8 hojas"</string>
+    <string name="shape_name_heart">"Corazón"</string>
+    <string name="shape_name_boom">"Explosión"</string>
+    <string name="shape_name_soft_boom">"Explosión suave"</string>
+    <string name="shape_name_cookie_4">"Galleta 4"</string>
+    <string name="shape_name_cookie_6">"Galleta 6"</string>
+    <string name="shape_name_cookie_9">"Galleta 9"</string>
+    <string name="shape_name_cookie_12">"Galleta 12"</string>
+    <string name="shape_name_bun">"Panecillo"</string>
+    <string name="shape_name_gem">"Gema"</string>
+    <string name="shape_name_pixel_circle">"Círculo pixelado"</string>
+</resources>

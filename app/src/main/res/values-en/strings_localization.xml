@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="lx_update_alert_title">"\"%1$s\" has a new version"</string>
+    <string name="lx_update_alert_default_log">"The source script author released a new version. Update for better stability."</string>
+    <string name="lx_update_alert_go">"Update"</string>
+    <string name="lx_update_alert_ignore">"Ignore"</string>
     <!-- English translations for labels that previously remained Chinese. -->
     <string name="ui_12_h_34_min">"12 h 34 min"</string>
     <string name="ui_12_songs_100_plays_10_h">"12 songs · 100 plays · 10 h"</string>

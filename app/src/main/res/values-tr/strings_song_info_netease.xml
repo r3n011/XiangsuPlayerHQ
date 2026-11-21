@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- NetEase song info sections (P0/P1) -->
+    <string name="song_info_section_netease">"NetEase"</string>
+    <string name="song_info_label_alias">"Takma ad"</string>
+    <string name="song_info_label_alias_translation">"Çeviri başlık"</string>
+    <string name="song_info_label_release_date">"Yayın tarihi"</string>
+    <string name="song_info_label_popularity">"Popülerlik"</string>
+    <string name="song_info_label_comments">"Yorumlar"</string>
+    <string name="song_info_label_quality_max">"Maks. kalite"</string>
+    <string name="song_info_label_copyright">"Kullanılabilirlik"</string>
+    <string name="song_info_playable_yes">"Oynatılabilir"</string>
+    <string name="song_info_playable_no">"Kullanılamıyor"</string>
+    <string name="song_info_section_album_extra">"Albüm"</string>
+    <string name="song_info_section_artist_extra">"Sanatçı"</string>
+    <string name="song_info_label_company">"Şirket"</string>
+    <string name="song_info_label_track_count">"Parça"</string>
+    <string name="song_info_section_wiki">"Bu şarkı hakkında"</string>
+    <string name="song_info_section_similar">"Benzer şarkılar"</string>
+    <string name="song_info_label_fans">"Takipçi"</string>
+    <string name="song_info_action_view_album">"Albümü görüntüle"</string>
+    <string name="song_info_action_view_artist">"Sanatçıyı görüntüle"</string>
+</resources>

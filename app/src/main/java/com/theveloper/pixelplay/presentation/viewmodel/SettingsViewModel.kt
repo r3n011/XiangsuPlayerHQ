@@ -214,6 +214,10 @@ data class SettingsUiState(
     val playerStyle: PlayerStyle = PlayerStyle.CLASSIC,
     val playerAccentBackground: Boolean = false,
     val playerMergeControls: Boolean = false,
+    // ⚡ Expressive 图形库（MaterialShapes ID）
+    val expressivePlayerArtShape: String = "BUN",
+    val expressivePlayerControlsShape: String = "COOKIE_12",
+    val expressiveMiniPlayerShape: String = "COOKIE_4",
 )
 
 data class FailedSongInfo(
@@ -570,6 +574,23 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             userPreferencesRepository.collageAutoRotateFlow.collect { autoRotate ->
                 _uiState.update { it.copy(collageAutoRotate = autoRotate) }
+            }
+        }
+
+        // ⚡ Expressive 图形库：播放器封面 / 控制按钮 / 迷你播放器封面
+        viewModelScope.launch {
+            userPreferencesRepository.expressivePlayerArtShapeFlow.collect { shape ->
+                _uiState.update { it.copy(expressivePlayerArtShape = shape) }
+            }
+        }
+        viewModelScope.launch {
+            userPreferencesRepository.expressivePlayerControlsShapeFlow.collect { shape ->
+                _uiState.update { it.copy(expressivePlayerControlsShape = shape) }
+            }
+        }
+        viewModelScope.launch {
+            userPreferencesRepository.expressiveMiniPlayerShapeFlow.collect { shape ->
+                _uiState.update { it.copy(expressiveMiniPlayerShape = shape) }
             }
         }
 
@@ -1409,6 +1430,35 @@ class SettingsViewModel @Inject constructor(
     fun setPlayerMergeControls(enabled: Boolean) {
         viewModelScope.launch {
             userPreferencesRepository.setPlayerMergeControls(enabled)
+        }
+    }
+
+    // ─── Expressive 图形库 ────────────────────────────────────────────────────
+
+    fun setExpressivePlayerArtShape(shapeId: String) {
+        viewModelScope.launch {
+            userPreferencesRepository.setExpressivePlayerArtShape(shapeId)
+        }
+    }
+
+    fun setExpressivePlayerControlsShape(shapeId: String) {
+        viewModelScope.launch {
+            userPreferencesRepository.setExpressivePlayerControlsShape(shapeId)
+        }
+    }
+
+    fun setExpressiveMiniPlayerShape(shapeId: String) {
+        viewModelScope.launch {
+            userPreferencesRepository.setExpressiveMiniPlayerShape(shapeId)
+        }
+    }
+
+    /** 应用整套图形预设（播放器封面 / 控制按钮 / 迷你播放器封面）。 */
+    fun applyExpressiveShapePreset(presetKey: String) {
+        val (art, controls, mini) =
+            com.theveloper.pixelplay.presentation.components.ExpressiveShapes.presetShapes(presetKey)
+        viewModelScope.launch {
+            userPreferencesRepository.applyExpressiveShapePreset(art, controls, mini)
         }
     }
 

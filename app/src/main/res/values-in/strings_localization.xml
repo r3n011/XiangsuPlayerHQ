@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="lx_update_alert_title">"“%1$s” memiliki versi baru"</string>
+    <string name="lx_update_alert_default_log">"Pembuat skrip sumber merilis versi baru. Perbarui untuk stabilitas lebih baik."</string>
+    <string name="lx_update_alert_go">"Perbarui"</string>
+    <string name="lx_update_alert_ignore">"Abaikan"</string>
     <!-- Indonesian translations for strings_localization. -->
     <string name="ui_12_h_34_min">"12 jam 34 menit"</string>
     <string name="ui_12_songs_100_plays_10_h">"12 lagu · 100 kali diputar · 10 jam"</string>

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Expressive player shape library -->
+    <string name="setcat_expressive_shapes_group">"Shape library"</string>
+    <string name="setcat_expressive_shape_player_art">"Player artwork"</string>
+    <string name="setcat_expressive_shape_player_controls">"Control buttons"</string>
+    <string name="setcat_expressive_shape_mini_player">"Mini player artwork"</string>
+    <string name="setcat_expressive_shape_picker_title">"Choose a shape"</string>
+    <string name="setcat_expressive_shape_picker_desc">"Pick a Material 3 Expressive shape; it is applied immediately"</string>
+    <string name="setcat_expressive_shape_preset">"Shape preset"</string>
+    <string name="setcat_expressive_shape_preset_desc">"Apply a matching set of shapes to the player, controls and mini player"</string>
+    <string name="shape_preset_rhythm">"Rhythm default"</string>
+    <string name="shape_preset_soft">"Soft"</string>
+    <string name="shape_preset_geometric">"Geometric"</string>
+    <string name="shape_preset_floral">"Floral"</string>
+    <string name="shape_name_circle">"Circle"</string>
+    <string name="shape_name_square">"Square"</string>
+    <string name="shape_name_pentagon">"Pentagon"</string>
+    <string name="shape_name_diamond">"Diamond"</string>
+    <string name="shape_name_flower">"Flower"</string>
+    <string name="shape_name_clover_4">"4-Leaf Clover"</string>
+    <string name="shape_name_clover_8">"8-Leaf Clover"</string>
+    <string name="shape_name_heart">"Heart"</string>
+    <string name="shape_name_boom">"Boom"</string>
+    <string name="shape_name_soft_boom">"Soft Boom"</string>
+    <string name="shape_name_cookie_4">"Cookie 4"</string>
+    <string name="shape_name_cookie_6">"Cookie 6"</string>
+    <string name="shape_name_cookie_9">"Cookie 9"</string>
+    <string name="shape_name_cookie_12">"Cookie 12"</string>
+    <string name="shape_name_bun">"Bun"</string>
+    <string name="shape_name_gem">"Gem"</string>
+    <string name="shape_name_pixel_circle">"Pixel Circle"</string>
+</resources>

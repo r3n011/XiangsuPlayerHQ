@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Expressive player shape library -->
+    <string name="setcat_expressive_shapes_group">"Библиотека фигур"</string>
+    <string name="setcat_expressive_shape_player_art">"Обложка плеера"</string>
+    <string name="setcat_expressive_shape_player_controls">"Кнопки управления"</string>
+    <string name="setcat_expressive_shape_mini_player">"Обложка мини-плеера"</string>
+    <string name="setcat_expressive_shape_picker_title">"Выберите фигуру"</string>
+    <string name="setcat_expressive_shape_picker_desc">"Выберите фигуру Material 3 Expressive — она применится сразу"</string>
+    <string name="setcat_expressive_shape_preset">"Пресет фигур"</string>
+    <string name="setcat_expressive_shape_preset_desc">"Применить набор фигур для плеера, управления и мини-плеера"</string>
+    <string name="shape_preset_rhythm">"Rhythm по умолчанию"</string>
+    <string name="shape_preset_soft">"Мягкие"</string>
+    <string name="shape_preset_geometric">"Геометрические"</string>
+    <string name="shape_preset_floral">"Цветочные"</string>
+    <string name="shape_name_circle">"Круг"</string>
+    <string name="shape_name_square">"Квадрат"</string>
+    <string name="shape_name_pentagon">"Пятиугольник"</string>
+    <string name="shape_name_diamond">"Ромб"</string>
+    <string name="shape_name_flower">"Цветок"</string>
+    <string name="shape_name_clover_4">"Клевер (4)"</string>
+    <string name="shape_name_clover_8">"Клевер (8)"</string>
+    <string name="shape_name_heart">"Сердце"</string>
+    <string name="shape_name_boom">"Взрыв"</string>
+    <string name="shape_name_soft_boom">"Мягкий взрыв"</string>
+    <string name="shape_name_cookie_4">"Печенье 4"</string>
+    <string name="shape_name_cookie_6">"Печенье 6"</string>
+    <string name="shape_name_cookie_9">"Печенье 9"</string>
+    <string name="shape_name_cookie_12">"Печенье 12"</string>
+    <string name="shape_name_bun">"Булочка"</string>
+    <string name="shape_name_gem">"Кристалл"</string>
+    <string name="shape_name_pixel_circle">"Пиксельный круг"</string>
+</resources>

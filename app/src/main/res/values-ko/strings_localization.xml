@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="lx_update_alert_title">"“%1$s” 새 버전이 있습니다"</string>
+    <string name="lx_update_alert_default_log">"음원 스크립트 작성자가 새 버전을 배포했습니다. 안정성을 위해 업데이트하세요."</string>
+    <string name="lx_update_alert_go">"업데이트"</string>
+    <string name="lx_update_alert_ignore">"무시"</string>
     <!-- Korean translations for strings_localization. -->
     <string name="ui_12_h_34_min">"12시간 34분"</string>
     <string name="ui_12_songs_100_plays_10_h">"12곡 · 100회 재생 · 10시간"</string>

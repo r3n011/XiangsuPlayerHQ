@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- NetEase song info sections (P0/P1) -->
+    <string name="song_info_section_netease">"NetEase"</string>
+    <string name="song_info_label_alias">"Alias"</string>
+    <string name="song_info_label_alias_translation">"Judul terjemahan"</string>
+    <string name="song_info_label_release_date">"Tanggal rilis"</string>
+    <string name="song_info_label_popularity">"Popularitas"</string>
+    <string name="song_info_label_comments">"Komentar"</string>
+    <string name="song_info_label_quality_max">"Kualitas maks."</string>
+    <string name="song_info_label_copyright">"Ketersediaan"</string>
+    <string name="song_info_playable_yes">"Dapat diputar"</string>
+    <string name="song_info_playable_no">"Tidak tersedia"</string>
+    <string name="song_info_section_album_extra">"Album"</string>
+    <string name="song_info_section_artist_extra">"Artis"</string>
+    <string name="song_info_label_company">"Label"</string>
+    <string name="song_info_label_track_count">"Lagu"</string>
+    <string name="song_info_section_wiki">"Tentang lagu ini"</string>
+    <string name="song_info_section_similar">"Lagu serupa"</string>
+    <string name="song_info_label_fans">"Pengikut"</string>
+    <string name="song_info_action_view_album">"Lihat album"</string>
+    <string name="song_info_action_view_artist">"Lihat artis"</string>
+</resources>

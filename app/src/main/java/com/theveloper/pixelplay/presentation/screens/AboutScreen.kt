@@ -838,10 +838,15 @@ private fun AboutHeroCard(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CommunitySignalsRow() {
+    val context = LocalContext.current
+    // ⚡「开源」徽标可点击：跳转本项目 GitHub 仓库
+    val repoUrl = "https://github.com/r3n011/XiangsuPlayerHQ"
     val labels = listOf(
-        stringResource(R.string.about_signal_open_source) to Icons.Rounded.Public,
-        stringResource(R.string.about_signal_community_first) to Icons.Rounded.AutoAwesome,
-        stringResource(R.string.about_signal_material3) to Icons.Rounded.Palette,
+        Triple(stringResource(R.string.about_signal_open_source), Icons.Rounded.Public) {
+            openUrl(context, repoUrl)
+        },
+        Triple(stringResource(R.string.about_signal_community_first), Icons.Rounded.AutoAwesome, null),
+        Triple(stringResource(R.string.about_signal_material3), Icons.Rounded.Palette, null),
     )
 
     FlowRow(
@@ -849,11 +854,8 @@ private fun CommunitySignalsRow() {
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        labels.forEach { (label, icon) ->
-            Surface(
-                shape = AbsoluteSmoothCornerShape(16.dp, 60),
-                color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.92f),
-            ) {
+        labels.forEach { (label, icon, onClick) ->
+            val content: @Composable () -> Unit = {
                 Row(
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -872,6 +874,18 @@ private fun CommunitySignalsRow() {
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
+            }
+            if (onClick != null) {
+                Surface(
+                    onClick = onClick,
+                    shape = AbsoluteSmoothCornerShape(16.dp, 60),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.92f),
+                ) { content() }
+            } else {
+                Surface(
+                    shape = AbsoluteSmoothCornerShape(16.dp, 60),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.92f),
+                ) { content() }
             }
         }
     }

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- NetEase song info sections (P0/P1) -->
+    <string name="song_info_section_netease">"网易云"</string>
+    <string name="song_info_label_alias">"别名"</string>
+    <string name="song_info_label_alias_translation">"译名"</string>
+    <string name="song_info_label_release_date">"发行日期"</string>
+    <string name="song_info_label_popularity">"热度"</string>
+    <string name="song_info_label_comments">"评论数"</string>
+    <string name="song_info_label_quality_max">"最高音质"</string>
+    <string name="song_info_label_copyright">"版权"</string>
+    <string name="song_info_playable_yes">"可播放"</string>
+    <string name="song_info_playable_no">"不可播放"</string>
+    <string name="song_info_section_album_extra">"专辑信息"</string>
+    <string name="song_info_section_artist_extra">"歌手信息"</string>
+    <string name="song_info_label_company">"发行公司"</string>
+    <string name="song_info_label_track_count">"曲目数"</string>
+    <string name="song_info_section_wiki">"歌曲百科"</string>
+    <string name="song_info_section_similar">"相似歌曲"</string>
+    <string name="song_info_label_fans">"粉丝"</string>
+    <string name="song_info_action_view_album">"查看专辑"</string>
+    <string name="song_info_action_view_artist">"查看歌手"</string>
+</resources>

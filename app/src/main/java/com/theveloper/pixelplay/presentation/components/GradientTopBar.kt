@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.shape.CircleShape
@@ -23,6 +24,7 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.rounded.ChatBubbleOutline
+import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.Tune
@@ -31,6 +33,7 @@ import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LargeTopAppBar
+import androidx.compose.material3.Surface
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -167,27 +170,37 @@ fun HomeGradientTopBar(
         title = { /* nada, usamos solo acciones */ },
         navigationIcon = {
             if (onMessagesClick != null) {
-                BadgedBox(
-                    modifier = Modifier.padding(start = 8.dp),
-                    badge = {
-                        if (unreadCount > 0) {
-                            Badge {
-                                Text(if (unreadCount > 99) "99+" else unreadCount.toString())
-                            }
-                        }
-                    }
+                // ⚡ 铃铛胶囊：图标 + 文案（无未读显示「消息」，有未读显示「N 条」），
+                //    替代原来的徽标圆钮，信息更直观且不会因 99+ 挤爆图标。
+                Surface(
+                    onClick = onMessagesClick,
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    modifier = Modifier.padding(start = 8.dp)
                 ) {
-                    // ⚡ 与右侧按钮统一样式：同为 40dp 圆形 FilledIconButton + surfaceContainerHigh 底
-                    FilledIconButton(
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            contentColor = MaterialTheme.colorScheme.onSurface
-                        ),
-                        onClick = onMessagesClick
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.ChatBubbleOutline,
-                            contentDescription = stringResource(R.string.chat_cd_messages)
+                            imageVector = Icons.Rounded.Notifications,
+                            contentDescription = stringResource(R.string.chat_cd_messages),
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = if (unreadCount > 0) {
+                                stringResource(
+                                    R.string.home_messages_unread_count,
+                                    unreadCount.coerceAtMost(99)
+                                )
+                            } else {
+                                stringResource(R.string.chat_cd_messages)
+                            },
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1
                         )
                     }
                 }

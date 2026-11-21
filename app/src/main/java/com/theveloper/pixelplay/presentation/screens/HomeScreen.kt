@@ -60,6 +60,7 @@ import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.ChatBubbleOutline
+import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Card
@@ -139,7 +140,6 @@ import com.theveloper.pixelplay.data.preferences.CollagePattern
 import com.theveloper.pixelplay.data.preferences.NavBarStyle
 import com.theveloper.pixelplay.presentation.components.AlbumArtCollage
 import com.theveloper.pixelplay.presentation.components.BetaInfoBottomSheet
-import com.theveloper.pixelplay.presentation.components.Beta05CleanInstallDisclaimerDialog
 import com.theveloper.pixelplay.presentation.netease.dashboard.NeteaseDashboardViewModel
 import com.theveloper.pixelplay.presentation.jellyfin.dashboard.JellyfinDashboardViewModel
 import com.theveloper.pixelplay.presentation.navidrome.dashboard.NavidromeDashboardViewModel
@@ -437,7 +437,6 @@ fun HomeScreen(
     var showTogetherSheet by remember { mutableStateOf(false) }
     val togetherState by listenTogetherViewModel.state.collectAsStateWithLifecycle()
     var showNeteaseLoginRequiredDialog by remember { mutableStateOf(false) }
-    var cleanInstallDisclaimerDismissedThisSession by rememberSaveable { mutableStateOf(false) }
     var showHearingGuardSetup by remember { mutableStateOf(false) }
     var showHearingGuardStatusSheet by remember { mutableStateOf(false) }
     var hasShownSetupHint by rememberSaveable { mutableStateOf(false) }
@@ -988,9 +987,6 @@ fun HomeScreen(
     }
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-    val shouldShowCleanInstallDisclaimer =
-        settingsUiState.beta05CleanInstallDisclaimerDismissed == false &&
-            !cleanInstallDisclaimerDismissedThisSession
 
     // Close sidebar when player opens on tablet (landscape) or when player expands
     LaunchedEffect(currentSong, isLandscape) {
@@ -1684,7 +1680,7 @@ fun HomeScreen(
                     )
                 }
             }
-            // 平板横向：消息入口浮动在左上角
+            // 平板横向：消息入口浮动在左上角（铃铛胶囊：无未读「消息」/ 有未读「N 条」）
             Box(
                 modifier = Modifier
                     .align(Alignment.TopStart)
@@ -1696,31 +1692,40 @@ fun HomeScreen(
                     )
                     .zIndex(10f)
             ) {
-                BadgedBox(
-                    badge = {
-                        if (unreadMessages > 0) {
-                            Badge {
-                                Text(if (unreadMessages > 99) "99+" else unreadMessages.toString())
-                            }
+                Surface(
+                    onClick = {
+                        if (isNeteaseLoggedIn) {
+                            navController.navigateSafely(Screen.Messages.route)
+                        } else {
+                            showMessagesLoginDialog = true
                         }
-                    }
+                    },
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh
                 ) {
-                    FilledIconButton(
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            contentColor = MaterialTheme.colorScheme.onSurface
-                        ),
-                        onClick = {
-                            if (isNeteaseLoggedIn) {
-                                navController.navigateSafely(Screen.Messages.route)
-                            } else {
-                                showMessagesLoginDialog = true
-                            }
-                        }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.ChatBubbleOutline,
-                            contentDescription = stringResource(R.string.chat_cd_messages)
+                            imageVector = Icons.Rounded.Notifications,
+                            contentDescription = stringResource(R.string.chat_cd_messages),
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = if (unreadMessages > 0) {
+                                stringResource(
+                                    R.string.home_messages_unread_count,
+                                    unreadMessages.coerceAtMost(99)
+                                )
+                            } else {
+                                stringResource(R.string.chat_cd_messages)
+                            },
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1
                         )
                     }
                 }
@@ -1945,17 +1950,6 @@ fun HomeScreen(
             dismissButton = {
                 TextButton(onClick = dismissPrompt) { Text(localizedStringResource(R.string.ui_later)) }
             },
-        )
-    }
-
-    if (shouldShowCleanInstallDisclaimer) {
-        Beta05CleanInstallDisclaimerDialog(
-            onDismiss = { dontShowAgain ->
-                cleanInstallDisclaimerDismissedThisSession = true
-                if (dontShowAgain) {
-                    settingsViewModel.setBeta05CleanInstallDisclaimerDismissed(true)
-                }
-            }
         )
     }
 

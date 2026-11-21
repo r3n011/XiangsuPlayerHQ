@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Expressive player shape library -->
+    <string name="setcat_expressive_shapes_group">"모양 라이브러리"</string>
+    <string name="setcat_expressive_shape_player_art">"플레이어 표지"</string>
+    <string name="setcat_expressive_shape_player_controls">"컨트롤 버튼"</string>
+    <string name="setcat_expressive_shape_mini_player">"미니 플레이어 표지"</string>
+    <string name="setcat_expressive_shape_picker_title">"모양 선택"</string>
+    <string name="setcat_expressive_shape_picker_desc">"Material 3 Expressive 모양을 선택하면 즉시 적용됩니다"</string>
+    <string name="setcat_expressive_shape_preset">"모양 프리셋"</string>
+    <string name="setcat_expressive_shape_preset_desc">"플레이어, 컨트롤, 미니 플레이어 모양을 한 번에 적용"</string>
+    <string name="shape_preset_rhythm">"Rhythm 기본"</string>
+    <string name="shape_preset_soft">"부드럽게"</string>
+    <string name="shape_preset_geometric">"기하학"</string>
+    <string name="shape_preset_floral">"꽃"</string>
+    <string name="shape_name_circle">"원"</string>
+    <string name="shape_name_square">"사각형"</string>
+    <string name="shape_name_pentagon">"오각형"</string>
+    <string name="shape_name_diamond">"다이아몬드"</string>
+    <string name="shape_name_flower">"꽃"</string>
+    <string name="shape_name_clover_4">"네잎클로버"</string>
+    <string name="shape_name_clover_8">"여덟잎클로버"</string>
+    <string name="shape_name_heart">"하트"</string>
+    <string name="shape_name_boom">"폭발"</string>
+    <string name="shape_name_soft_boom">"부드러운 폭발"</string>
+    <string name="shape_name_cookie_4">"쿠키 4"</string>
+    <string name="shape_name_cookie_6">"쿠키 6"</string>
+    <string name="shape_name_cookie_9">"쿠키 9"</string>
+    <string name="shape_name_cookie_12">"쿠키 12"</string>
+    <string name="shape_name_bun">"빵"</string>
+    <string name="shape_name_gem">"보석"</string>
+    <string name="shape_name_pixel_circle">"픽셀 원"</string>
+</resources>
