@@ -213,7 +213,10 @@ import com.theveloper.pixelplay.presentation.components.CrashReportDialog
 import com.theveloper.pixelplay.presentation.components.DismissUndoBar
 import com.theveloper.pixelplay.presentation.components.DownloadStatusPhase
 import com.theveloper.pixelplay.presentation.components.DownloadStatusTopChip
+import com.theveloper.pixelplay.data.preferences.MiniPlayerStyle
 import com.theveloper.pixelplay.presentation.components.DrawerDestination
+import com.theveloper.pixelplay.presentation.components.ExpressiveMiniPlayerHeight
+import com.theveloper.pixelplay.presentation.components.LocalMiniPlayerSlotHeight
 import com.theveloper.pixelplay.presentation.components.MiniPlayerBottomSpacer
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
 import com.theveloper.pixelplay.presentation.components.PlayerInternalNavigationBar
@@ -694,7 +697,19 @@ class MainActivity : ComponentActivity() {
                                     //   衔接但不被淡出层遮蔽（见上方 enterAnimationStarted 的说明）
                                     start = enterAnimationStarted
                                 ) {
-                                    MainAppContent(playerViewModel, mainViewModel)
+                                    // ⚡ 迷你条槽位高度按样式提供（Expressive：84dp，对应 72dp 胶囊）
+                                    val miniStyleName by playerViewModel.miniPlayerStyle
+                                        .collectAsStateWithLifecycle()
+                                    val miniSlotHeight = if (miniStyleName == MiniPlayerStyle.EXPRESSIVE.name) {
+                                        ExpressiveMiniPlayerHeight
+                                    } else {
+                                        MiniPlayerHeight
+                                    }
+                                    CompositionLocalProvider(
+                                        LocalMiniPlayerSlotHeight provides miniSlotHeight
+                                    ) {
+                                        MainAppContent(playerViewModel, mainViewModel)
+                                    }
                                 }
                             }
 
@@ -1446,6 +1461,7 @@ class MainActivity : ComponentActivity() {
 
         // mini-player 底部边距:使用稳定值,不依赖动画值,避免 sheetCollapsedTargetY 每帧变化
         // 动画由 sheet 内部的 SheetMotionController 处理
+        val miniPlayerSlotHeight = LocalMiniPlayerSlotHeight.current
         val miniPlayerBottomMarginDp = if (isLandscape) {
             maxOf(systemNavBarInset, 8.dp)
         } else {
@@ -1453,7 +1469,7 @@ class MainActivity : ComponentActivity() {
                 shouldHideBottomNavBar -> systemNavBarInset
                 // 悬浮底栏：mini player 直接落到胶囊正上方，底部仅预留 mini 高度 + inset，
                 // 消除之前按普通底栏高度(84dp)预留造成 mini player 与悬浮导航之间的大空隙
-                navBarStyle == NavBarStyle.FLOATING -> MiniPlayerHeight + systemNavBarInset
+                navBarStyle == NavBarStyle.FLOATING -> miniPlayerSlotHeight + systemNavBarInset
                 else -> navBarOccupiedHeight
             }
         }
@@ -1701,7 +1717,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                val miniPlayerH = with(density) { MiniPlayerHeight.toPx() }
+                val miniPlayerH = with(density) { LocalMiniPlayerSlotHeight.current.toPx() }
                 val totalSheetHeightWhenContentCollapsedPx = if (showPlayerContentInitially && !shouldHideMiniPlayer) miniPlayerH else 0f
 
                 // sheet 位置只根据稳定的布局值确定，不依赖动画值（动画在 sheet 内部处理）
@@ -1767,7 +1783,7 @@ class MainActivity : ComponentActivity() {
                     val shouldShowMiniPlayer = showPlayerContentInitially && !shouldHideMiniPlayer &&
                             currentRoute !in setOf(Screen.NavBarCrRad.route)
                     if (shouldShowMiniPlayer) {
-                        (sheetCollapsedTargetY + with(density) { MiniPlayerHeight.toPx() })
+                        (sheetCollapsedTargetY + with(density) { LocalMiniPlayerSlotHeight.current.toPx() })
                             .coerceAtLeast(0f)
                     } else {
                         with(density) { containerHeight.toPx() }

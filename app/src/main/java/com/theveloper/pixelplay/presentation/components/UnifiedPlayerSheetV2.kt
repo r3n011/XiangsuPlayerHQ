@@ -268,7 +268,8 @@ fun UnifiedPlayerSheetV2(
     }
 
     val screenHeightPx = remember(windowSize) { windowSize.height.toFloat() }
-    val miniPlayerContentHeightPx = remember { with(density) { MiniPlayerHeight.toPx() } }
+    // ⚡ 槽位高度按样式取（Expressive 84dp），sheet 折叠位置随之对齐
+    val miniPlayerContentHeightPx = with(density) { LocalMiniPlayerSlotHeight.current.toPx() }
 
     val isCastConnecting by playerViewModel.isCastConnecting.collectAsStateWithLifecycle()
     val showPlayerContentArea by remember(activeSong, isCastConnecting) {
@@ -672,7 +673,7 @@ fun UnifiedPlayerSheetV2(
             (infrequentPlayerState.currentSong?.title ?: "")
     }
 
-    val miniHeightPx = with(density) { com.theveloper.pixelplay.presentation.components.MiniPlayerHeight.toPx() }
+    val miniHeightPx = with(density) { LocalMiniPlayerSlotHeight.current.toPx() }
 
     Surface(
         modifier = Modifier

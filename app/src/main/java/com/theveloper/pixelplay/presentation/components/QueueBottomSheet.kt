@@ -922,7 +922,7 @@ fun QueueBottomSheet(
                             contentPadding = PaddingValues(
                                 start = 0.dp,
                                 end = queueListEndPadding,
-                                bottom = MiniPlayerHeight + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 32.dp
+                                bottom = LocalMiniPlayerSlotHeight.current + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 32.dp
                             )
                         ) {
                             item("queue_top_spacer") {

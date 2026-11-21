@@ -52,7 +52,7 @@ import com.theveloper.pixelplay.MainActivity
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.kugou.KugouAudiobookAlbum
 import com.theveloper.pixelplay.presentation.components.CollapsibleCommonTopBar
-import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
+import com.theveloper.pixelplay.presentation.components.LocalMiniPlayerSlotHeight
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
 import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 import dev.chrisbanes.haze.hazeSource
@@ -132,7 +132,7 @@ fun AudiobookLibraryScreen(
                         .hazeSource(MainActivity.LocalHazeState.current),
                     contentPadding = PaddingValues(
                         top = topBarState.heightDp + 8.dp,
-                        bottom = MiniPlayerHeight +
+                        bottom = LocalMiniPlayerSlotHeight.current +
                             WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() +
                             16.dp,
                     ),

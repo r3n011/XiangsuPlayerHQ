@@ -1,5 +1,26 @@
 # 更新日志
 
+## v1.8.3 (2026-11-21)
+
+### 改进
+- **Expressive 播放器 1:1 还原 Rhythm**：
+  - 封面改用 MaterialShapes **BUN** 形状（对齐 Rhythm ExpressiveShapeProvider 默认值），暂停缩放 1.0 → **0.85**（原 0.92）
+  - 播放/暂停改为 Rhythm 同款**文字胶囊**（headlineMedium 28sp Black，无图标），高度半圆角
+  - 上一曲/下一曲改用 **COOKIE_12** 形状，按下 0.92 弹性缩放
+  - 标题/歌手在 merge 模式（默认）下**居中**，非 merge 左对齐（原恒左对齐）
+  - 控件卡内边距 20dp、行距 16dp；强调色背景模式下**去掉控件卡**，控件直接铺在背景上
+  - 底部功能胶囊高度 56 → **44dp**、外圆角 22dp，对齐 Rhythm 的 grouped pill
+- **Expressive 迷你播放器 1:1 还原 Rhythm**：
+  - 形态从 64dp 平铺条改为 **84dp 槽位 → 72dp 全胶囊**（CircleShape），左右 14dp / 上下 6dp 内缩
+  - 底色改为 `surfaceContainer`，文本 `onSurface / onSurfaceVariant`（原 primaryContainer 系配色）
+  - 进度改为 Rhythm 同款**胶囊背景填充**（手机 primaryContainer 不透明 / 平板 45%），不再是底部细进度条
+  - 封面 48 → **60dp**（平板 46dp），形状 **COOKIE_4**；播放键 44 → **56dp**（平板 上一曲/播放/下一曲 36/44/36）
+  - 补齐交互动画：按下 0.98、首次出现 1.05 弹跳、换曲 1.02 弹跳
+  - 迷你条槽位高度全局样式化：导航栏偏移、播放器 Sheet 折叠位置、各页面底部预留（播放列表 / 队列 / 有声书 / B 站收藏等）全部按样式自适应
+
+### 其它
+- 版本号更新至 `1.8.3 (75)`。
+
 ## v1.8.2 (2026-11-20)
 
 ### 新增

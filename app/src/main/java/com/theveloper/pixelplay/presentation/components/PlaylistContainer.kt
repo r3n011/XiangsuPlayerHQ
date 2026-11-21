@@ -374,7 +374,7 @@ fun PlaylistItems(
                 ),
             state = listState,
             verticalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(bottom = bottomBarHeight + MiniPlayerHeight + 30.dp)
+            contentPadding = PaddingValues(bottom = bottomBarHeight + LocalMiniPlayerSlotHeight.current + 30.dp)
         ) {
             if (dailyRecommendHeader != null) {
                 item(key = "daily_recommend_header", contentType = "daily_recommend_header") {
@@ -452,7 +452,7 @@ fun PlaylistItems(
         }
         
         val bottomPadding = if (hasCurrentSong) 
-            bottomBarHeight + MiniPlayerHeight + 16.dp 
+            bottomBarHeight + LocalMiniPlayerSlotHeight.current + 16.dp 
         else 
             bottomBarHeight + 16.dp
 

@@ -360,7 +360,7 @@ fun BilibiliFavoritesScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(
                             start = 16.dp, end = 16.dp, top = 8.dp,
-                            bottom = 24.dp + MiniPlayerHeight + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                            bottom = 24.dp + LocalMiniPlayerSlotHeight.current + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
                         ),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
@@ -388,7 +388,7 @@ fun BilibiliFavoritesScreen(
                             state = videoListState,
                             contentPadding = androidx.compose.foundation.layout.PaddingValues(
                                 start = 16.dp, end = 16.dp, top = 8.dp,
-                                bottom = 24.dp + MiniPlayerHeight + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                                bottom = 24.dp + LocalMiniPlayerSlotHeight.current + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
                             ),
                             verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {

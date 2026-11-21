@@ -211,6 +211,7 @@ import com.theveloper.pixelplay.data.radio.RadioStation
 import com.theveloper.pixelplay.data.share.ShareLinkCodec
 import androidx.core.net.toUri
 import com.theveloper.pixelplay.presentation.components.AlbumCarouselSection
+import com.theveloper.pixelplay.presentation.components.ExpressiveShapes
 import com.theveloper.pixelplay.presentation.components.AutoScrollingTextOnDemand
 import com.theveloper.pixelplay.presentation.components.AppleMusicRotatingBackground
 import com.theveloper.pixelplay.presentation.components.CustomPlayerBackground
@@ -2978,7 +2979,7 @@ private fun FullPlayerExpressiveContent(
     var showSpeedSheet by remember { mutableStateOf(false) }
     // Rhythm：播放 1.0 / 暂停 0.85，MediumBouncy + Low stiffness 弹簧（叠加封面自身暂停缩放）
     val artworkScale by animateFloatAsState(
-        targetValue = if (isPlaying) 1f else 0.92f,
+        targetValue = if (isPlaying) 1f else 0.85f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessLow
@@ -3020,8 +3021,8 @@ private fun FullPlayerExpressiveContent(
     }
     val skipContent = if (transportFlatStyle) playerOnBaseColor else LocalMaterialTheme.current.onSecondaryFixed
     val cardColor = if (playerAccentBackground) {
-        // 强调色背景：卡片使用强调色玻璃（对应 Rhythm accentGlassStrong）
-        playerAccentColor.copy(alpha = 0.28f)
+        // 强调色背景：Rhythm 会**去掉控件卡 Surface**，控件直接铺在强调色背景上
+        Color.Transparent
     } else {
         playerOnBaseColor.copy(alpha = 0.08f)
     }
@@ -3046,8 +3047,9 @@ private fun FullPlayerExpressiveContent(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp)
-                .padding(horizontal = 8.dp),
+                // Rhythm：底部按钮组高 44dp、按钮等宽、节间距 2dp
+                .height(44.dp)
+                .padding(horizontal = 2.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -3241,6 +3243,8 @@ private fun FullPlayerExpressiveContent(
                                 scaleX = artworkScale
                                 scaleY = artworkScale
                             }
+                            // Rhythm Expressive Shapes 默认：大封面用 MaterialShapes BUN 形状
+                            .clip(ExpressiveShapes.PlayerArt)
                     ) {
                         albumCoverSection(Modifier.fillMaxSize())
                     }
@@ -3265,7 +3269,8 @@ private fun FullPlayerExpressiveContent(
                         )
                     },
                     modifier = Modifier.fillMaxWidth().clipToBounds(),
-                    contentAlignment = Alignment.CenterStart,
+                    // Rhythm：merge 模式（默认）标题/歌手居中，非 merge 左对齐
+                    contentAlignment = if (playerMergeControls) Alignment.CenterHorizontally else Alignment.CenterStart,
                     label = "ExpressiveSongInfoSlide"
                 ) { targetSong ->
                     Column {
@@ -3274,12 +3279,14 @@ private fun FullPlayerExpressiveContent(
                             style = titleTextStyle.copy(color = playerOnBaseColor),
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
+                            textAlign = if (playerMergeControls) TextAlign.Center else TextAlign.Start,
                             modifier = Modifier.fillMaxWidth()
                         )
                         // ⚡ 一起听头像条与歌手同排：不再独占一行，既不增加纵向高度
                         //   （高度紧张时会把底部控件挤出屏幕造成重叠），也不会与其它元素打架
                         Row(
                             modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = if (playerMergeControls) Arrangement.Center else Arrangement.Start,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
@@ -3318,59 +3325,47 @@ private fun FullPlayerExpressiveContent(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(
-                                start = 16.dp,
-                                end = 16.dp,
-                                top = 16.dp,
-                                bottom = if (isRadioPlayback) 16.dp else 8.dp
+                                // Rhythm：控件卡内边距 20dp（accent 模式下左右 20 / 顶部 8）
+                                start = 20.dp,
+                                end = 20.dp,
+                                top = if (playerAccentBackground) 8.dp else 20.dp,
+                                bottom = if (isRadioPlayback) 20.dp else 8.dp
                             )
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // 宽播放/暂停按钮（Rhythm 特征：weight(1f) 的大按钮）
+                            // 宽播放/暂停按钮（Rhythm 特征：weight(1f) 的文字胶囊，headlineMedium Black，无图标）
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
                                     .height(controlButtonSize)
-                                    .clip(RoundedCornerShape(24.dp))
+                                    .clip(RoundedCornerShape(controlButtonSize / 2))
                                     .background(playContainer)
                                     .clickable(onClick = onPlayPause),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                                        contentDescription = stringResource(if (isPlaying) R.string.cd_pause else R.string.cd_play),
-                                        tint = playContent,
-                                        modifier = Modifier.size(controlButtonSize * 0.4f)
-                                    )
-                                    Text(
-                                        text = stringResource(if (isPlaying) R.string.cd_pause else R.string.cd_play),
-                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                        color = playContent,
-                                        modifier = Modifier.padding(start = 8.dp)
-                                    )
-                                }
+                                Text(
+                                    text = stringResource(if (isPlaying) R.string.cd_pause else R.string.cd_play),
+                                    style = MaterialTheme.typography.headlineMedium.copy(
+                                        fontWeight = FontWeight.Black,
+                                        fontSize = 28.sp
+                                    ),
+                                    color = playContent
+                                )
                             }
                             if (!isRadioPlayback) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(controlButtonSize)
-                                        .clip(CircleShape)
-                                        .background(effectiveSkipContainer)
-                                        .then(glassModifier)
-                                        .clickable(onClick = onNext),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.SkipNext,
-                                        contentDescription = stringResource(R.string.next_track),
-                                        tint = skipContent,
-                                        modifier = Modifier.size(controlButtonSize * 0.45f)
-                                    )
-                                }
+                                ExpressiveTransportButton(
+                                    icon = Icons.Rounded.SkipNext,
+                                    contentDescription = stringResource(R.string.next_track),
+                                    size = controlButtonSize,
+                                    container = effectiveSkipContainer,
+                                    content = skipContent,
+                                    glassModifier = glassModifier,
+                                    onClick = onNext
+                                )
                             } else {
                                 // ⚡ 电台模式没有进度行：加载指示放在播放行末尾
                                 loadingStateChip()
@@ -3378,28 +3373,21 @@ private fun FullPlayerExpressiveContent(
                         }
 
                         if (!isRadioPlayback) {
-                            Spacer(Modifier.height(12.dp))
+                            Spacer(Modifier.height(16.dp))
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(controlButtonSize)
-                                        .clip(CircleShape)
-                                        .background(effectiveSkipContainer)
-                                        .then(glassModifier)
-                                        .clickable(onClick = onPrevious),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.SkipPrevious,
-                                        contentDescription = stringResource(R.string.previous_track),
-                                        tint = skipContent,
-                                        modifier = Modifier.size(controlButtonSize * 0.45f)
-                                    )
-                                }
+                                ExpressiveTransportButton(
+                                    icon = Icons.Rounded.SkipPrevious,
+                                    contentDescription = stringResource(R.string.previous_track),
+                                    size = controlButtonSize,
+                                    container = effectiveSkipContainer,
+                                    content = skipContent,
+                                    glassModifier = glassModifier,
+                                    onClick = onPrevious
+                                )
                                 // 进度区：复用现有进度条（含时间标签 / 音质信息 / 拖动 seek）
                                 Box(modifier = Modifier.weight(1f)) {
                                     playerProgressSection()
@@ -3419,9 +3407,9 @@ private fun FullPlayerExpressiveContent(
                 if (!playerMergeControls) {
                     Spacer(Modifier.height(12.dp))
 
-                    // 底部功能胶囊（Rhythm：grouped pill）
+                    // 底部功能胶囊（Rhythm：grouped pill，外圆角 22dp = 高度/2）
                     Surface(
-                        shape = RoundedCornerShape(24.dp),
+                        shape = RoundedCornerShape(22.dp),
                         color = effectiveCardColor,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -3442,6 +3430,56 @@ private fun FullPlayerExpressiveContent(
             pitchFollowSpeed = pitchFollowSpeed,
             onPitchFollowSpeedToggle = onPitchFollowSpeedToggle,
             onDismiss = { showSpeedSheet = false }
+        )
+    }
+}
+
+/**
+ * Expressive 上一曲/下一曲按钮（1:1 对齐 Rhythm `RhythmControlButton`）：
+ * MaterialShapes COOKIE_12 形状（Rhythm 默认），按下缩放 0.92（MediumBouncy/Low）。
+ */
+@Composable
+private fun ExpressiveTransportButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    size: androidx.compose.ui.unit.Dp,
+    container: Color,
+    content: Color,
+    glassModifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.92f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "ExpressiveTransportScale"
+    )
+    Box(
+        modifier = Modifier
+            .size(size)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clip(ExpressiveShapes.PlayerControls)
+            .background(container)
+            .then(glassModifier)
+            .clickable(
+                interactionSource = interaction,
+                indication = null,
+                onClick = onClick
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = content,
+            modifier = Modifier.size(size * 0.45f)
         )
     }
 }

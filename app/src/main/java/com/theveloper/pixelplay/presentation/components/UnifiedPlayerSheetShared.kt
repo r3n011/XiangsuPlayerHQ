@@ -10,6 +10,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -39,9 +41,11 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
@@ -55,8 +59,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
@@ -71,8 +77,20 @@ import com.theveloper.pixelplay.ui.theme.LocalAppFontFamily
 internal val LocalMaterialTheme = compositionLocalOf<ColorScheme> { error("No ColorScheme provided") }
 
 val MiniPlayerHeight = 64.dp
+
+/**
+ * Expressive 迷你条槽位高度（对齐 Rhythm ExpressiveMiniPlayer）：
+ * 外层槽位 84dp，内部上下各 6dp 内缩 → 可见胶囊 72dp。
+ */
+val ExpressiveMiniPlayerHeight = 84.dp
 const val ANIMATION_DURATION_MS = 255
 val MiniPlayerBottomSpacer = 8.dp
+
+/**
+ * 当前迷你条样式对应的槽位高度。由宿主在根部按样式提供；
+ * 各页面的底部预留、导航栏偏移都读取这个值，切样式时不会出现遮挡/空隙。
+ */
+val LocalMiniPlayerSlotHeight = compositionLocalOf { MiniPlayerHeight }
 
 @Composable
 fun getNavigationBarHeight(): Dp {
@@ -103,6 +121,26 @@ internal fun MiniPlayerContentInternal(
     // EXPRESSIVE = Rhythm 的 ExpressiveMiniPlayer（胶囊 + 不透明进度填充 + 单个大播放键）
     val isExpressiveStyle = miniPlayerStyle ==
         com.theveloper.pixelplay.data.preferences.MiniPlayerStyle.EXPRESSIVE.name
+
+    if (isExpressiveStyle) {
+        // ⚡ 1:1 对齐 Rhythm ExpressiveMiniPlayer（84dp 槽位 → 72dp 全胶囊，独立实现）
+        ExpressiveMiniPlayerContent(
+            song = song,
+            isPlaying = isPlaying,
+            isCastConnecting = isCastConnecting,
+            isPreparingPlayback = isPreparingPlayback,
+            onPlayPause = onPlayPause,
+            onPrevious = onPrevious,
+            onNext = onNext,
+            canScroll = canScroll,
+            currentPositionProvider = currentPositionProvider,
+            totalDurationProvider = totalDurationProvider,
+            expansionFractionProvider = expansionFractionProvider,
+            modifier = modifier
+        )
+        return
+    }
+
     val hapticFeedback = LocalHapticFeedback.current
     val controlsEnabled = !isCastConnecting && !isPreparingPlayback
 
@@ -403,5 +441,291 @@ private fun formatMiniPlayerTime(ms: Long): String {
         String.format(java.util.Locale.US, "%d:%02d:%02d", hours, minutes, seconds)
     } else {
         String.format(java.util.Locale.US, "%d:%02d", minutes, seconds)
+    }
+}
+
+/**
+ * Expressive 迷你播放器（1:1 对齐 Rhythm ExpressiveMiniPlayer）：
+ * - 槽位 84dp 内缩（水平 14dp / 垂直 6dp）→ 可见 72dp 全胶囊（CircleShape），底色 surfaceContainer；
+ * - 进度不是进度条，而是**胶囊背景填充**（手机 primaryContainer 不透明 / 平板 45%）；
+ * - 手机：60dp 封面（MaterialShapes COOKIE_4）+ 单个 56dp 播放键（无上下曲，左右滑切歌）；
+ *   平板：46dp 封面 + 上一曲 36 / 播放 44 / 下一曲 36；
+ * - 文本：标题 16sp Bold onSurface、歌手 13sp onSurfaceVariant，两者无间距；
+ * - 动画：按下 0.98、首次出现 1.05、换曲 1.02（同 Rhythm 的 spring 节奏）。
+ */
+@Composable
+private fun ExpressiveMiniPlayerContent(
+    song: Song,
+    isPlaying: Boolean,
+    isCastConnecting: Boolean,
+    isPreparingPlayback: Boolean,
+    onPlayPause: () -> Unit,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
+    canScroll: Boolean,
+    currentPositionProvider: () -> Long,
+    totalDurationProvider: () -> Long,
+    expansionFractionProvider: () -> Float,
+    modifier: Modifier = Modifier,
+) {
+    val scheme = LocalMaterialTheme.current
+    val hapticFeedback = LocalHapticFeedback.current
+    val isTablet = LocalConfiguration.current.screenWidthDp >= 600
+
+    // Rhythm：首次出现 1.05 弹跳 150ms，换曲 1.02 弹跳 100ms
+    var bounceScale by remember { mutableFloatStateOf(1f) }
+    LaunchedEffect(song.id) {
+        bounceScale = 1.05f
+        kotlinx.coroutines.delay(150)
+        bounceScale = 1.02f
+        kotlinx.coroutines.delay(100)
+        bounceScale = 1f
+    }
+
+    // Rhythm：按下 0.98（tween 100）
+    val pressInteraction = remember { MutableInteractionSource() }
+    val pressed by pressInteraction.collectIsPressedAsState()
+    val pressScale by animateFloatAsState(
+        targetValue = if (pressed) 0.98f else 1f,
+        animationSpec = tween(durationMillis = 100),
+        label = "ExpressiveMiniPress"
+    )
+
+    Box(
+        modifier = modifier
+            .graphicsLayer {
+                val f = expansionFractionProvider().coerceIn(0f, 1f)
+                alpha = (1f - f * 2f).coerceIn(0f, 1f)
+                scaleX = pressScale * bounceScale
+                scaleY = pressScale * bounceScale
+            }
+            .padding(horizontal = 14.dp, vertical = 6.dp)
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            shape = CircleShape,
+            color = scheme.surfaceContainer
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                // 进度背景填充（Rhythm：整条从左往右，被胶囊裁剪成同形）
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            val total = totalDurationProvider()
+                            val fraction = if (total <= 0L) 0f
+                            else (currentPositionProvider().toFloat() / total.toFloat()).coerceIn(0f, 1f)
+                            scaleX = fraction.coerceIn(0f, 1f)
+                            transformOrigin = TransformOrigin(0f, 0.5f)
+                        }
+                        .background(
+                            if (isTablet) scheme.primaryContainer.copy(alpha = 0.45f)
+                            else scheme.primaryContainer
+                        )
+                )
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(end = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // 封面：手机 72dp 盒内缩 6dp → 60dp；平板 56dp 盒内 46dp
+                    Box(
+                        modifier = if (isTablet) {
+                            Modifier.size(56.dp).padding(5.dp)
+                        } else {
+                            Modifier.fillMaxHeight().aspectRatio(1f).padding(6.dp)
+                        },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        val artModel = song.albumArtUriString?.takeIf { it.isNotBlank() }
+                        SmartImage(
+                            model = artModel,
+                            contentDescription = song.title,
+                            shape = ExpressiveShapes.MiniPlayerArt,
+                            targetSize = Size(150, 150),
+                            modifier = Modifier.fillMaxSize(),
+                            placeholderModel = if (artModel?.startsWith("telegram_art") == true) {
+                                "$artModel?quality=thumb"
+                            } else null
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        AutoScrollingText(
+                            text = when {
+                                isCastConnecting -> "Connecting to device…"
+                                isPreparingPlayback -> AppLocaleManager.getString(R.string.ui_getting_playback_url)
+                                else -> song.title
+                            },
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontSize = if (isTablet) 14.sp else 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = LocalAppFontFamily.current,
+                                color = scheme.onSurface
+                            ),
+                            gradientEdgeColor = scheme.surfaceContainer,
+                            canScroll = canScroll
+                        )
+                        if (isTablet) Spacer(modifier = Modifier.height(2.dp))
+                        AutoScrollingText(
+                            text = if (isPreparingPlayback) {
+                                AppLocaleManager.getString(R.string.ui_please_wait_a_moment)
+                            } else {
+                                song.displayArtist
+                            },
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontSize = if (isTablet) 12.sp else 13.sp,
+                                fontFamily = LocalAppFontFamily.current,
+                                color = scheme.onSurfaceVariant
+                            ),
+                            gradientEdgeColor = scheme.surfaceContainer,
+                            canScroll = canScroll
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(if (isTablet) 10.dp else 12.dp))
+
+                    if (isTablet) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            ExpressiveMiniIconButton(
+                                icon = Icons.Rounded.SkipPrevious,
+                                size = 36.dp,
+                                iconSize = 20.dp,
+                                tint = scheme.onSurface,
+                                description = "Previous"
+                            ) {
+                                hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onPrevious()
+                            }
+                            ExpressiveMiniPlayButton(
+                                size = 44.dp,
+                                iconSize = 22.dp,
+                                isPlaying = isPlaying,
+                                isLoading = isCastConnecting || isPreparingPlayback,
+                                container = scheme.primary,
+                                content = scheme.onPrimary
+                            ) {
+                                hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onPlayPause()
+                            }
+                            ExpressiveMiniIconButton(
+                                icon = Icons.Rounded.SkipNext,
+                                size = 36.dp,
+                                iconSize = 20.dp,
+                                tint = scheme.onSurface,
+                                description = "Next"
+                            ) {
+                                hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onNext()
+                            }
+                        }
+                    } else {
+                        ExpressiveMiniPlayButton(
+                            size = 56.dp,
+                            iconSize = 28.dp,
+                            isPlaying = isPlaying,
+                            isLoading = isCastConnecting || isPreparingPlayback,
+                            container = scheme.primary,
+                            content = scheme.onPrimary
+                        ) {
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onPlayPause()
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Expressive 迷你条播放键（Rhythm：圆形 primary 底 + onPrimary 图标，按压 0.92） */
+@Composable
+private fun ExpressiveMiniPlayButton(
+    size: Dp,
+    iconSize: Dp,
+    isPlaying: Boolean,
+    isLoading: Boolean,
+    container: androidx.compose.ui.graphics.Color,
+    content: androidx.compose.ui.graphics.Color,
+    onClick: () -> Unit
+) {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.92f else 1f,
+        animationSpec = androidx.compose.animation.core.spring(
+            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+            stiffness = androidx.compose.animation.core.Spring.StiffnessLow
+        ),
+        label = "ExpressiveMiniPlayScale"
+    )
+    Box(
+        modifier = Modifier
+            .size(size)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clip(CircleShape)
+            .background(container)
+            .clickable(
+                interactionSource = interaction,
+                indication = null,
+                enabled = !isLoading,
+                onClick = onClick
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        if (isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(size * 0.42f),
+                strokeWidth = 2.5.dp,
+                color = content,
+                trackColor = content.copy(alpha = 0.24f)
+            )
+        } else {
+            Icon(
+                imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                contentDescription = if (isPlaying) "Pause" else "Play",
+                tint = content,
+                modifier = Modifier.size(iconSize)
+            )
+        }
+    }
+}
+
+/** Expressive 迷你条平板上一曲/下一曲图标按钮（36dp） */
+@Composable
+private fun ExpressiveMiniIconButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    size: Dp,
+    iconSize: Dp,
+    tint: androidx.compose.ui.graphics.Color,
+    description: String,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(size)
+            .clip(CircleShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = description,
+            tint = tint,
+            modifier = Modifier.size(iconSize)
+        )
     }
 }

@@ -121,7 +121,8 @@ internal fun BoxScope.UnifiedPlayerMiniAndFullLayers(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .fillMaxWidth()
-                    .height(MiniPlayerHeight)
+                    // ⚡ 槽位高度按样式取（Expressive 84dp → 72dp 胶囊；其余 64dp）
+                    .height(LocalMiniPlayerSlotHeight.current)
                     .graphicsLayer {
                         alpha = (1f - playerContentExpansionFraction.value * 2f)
                             .coerceIn(0f, 1f)

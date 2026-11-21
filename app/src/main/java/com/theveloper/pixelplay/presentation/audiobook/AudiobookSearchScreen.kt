@@ -35,7 +35,7 @@ import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.kugou.KugouAudiobookAlbum
 import com.theveloper.pixelplay.presentation.components.AppSearchField
 import com.theveloper.pixelplay.presentation.components.CollapsibleCommonTopBar
-import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
+import com.theveloper.pixelplay.presentation.components.LocalMiniPlayerSlotHeight
 import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.delay
 
@@ -117,7 +117,7 @@ fun AudiobookSearchScreen(
                             start = 16.dp,
                             end = 16.dp,
                             top = 8.dp,
-                            bottom = MiniPlayerHeight +
+                            bottom = LocalMiniPlayerSlotHeight.current +
                                 WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() +
                                 16.dp,
                         ),

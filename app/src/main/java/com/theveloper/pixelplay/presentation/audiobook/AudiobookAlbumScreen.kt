@@ -49,7 +49,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.theveloper.pixelplay.MainActivity
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.presentation.components.CollapsibleCommonTopBar
-import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
+import com.theveloper.pixelplay.presentation.components.LocalMiniPlayerSlotHeight
 import com.theveloper.pixelplay.presentation.components.SmartImage
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
@@ -152,7 +152,7 @@ fun AudiobookAlbumScreen(
                     .hazeSource(MainActivity.LocalHazeState.current),
                 contentPadding = PaddingValues(
                     top = topBarState.heightDp + 8.dp,
-                    bottom = MiniPlayerHeight +
+                    bottom = LocalMiniPlayerSlotHeight.current +
                         WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() +
                         16.dp,
                 ),
