@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 听歌数据研究计划 -->
+
+    <!-- 状态卡 -->
+    <string name="research_state_not_participating_title">用听歌记录换 App 内免费 AI 额度</string>
+    <string name="research_join">参与活动</string>
+    <string name="research_not_participating_note">不参与也能正常使用全部基础功能。</string>
+    <string name="research_collecting_title">正在整理你的听歌记录</string>
+    <string name="research_collecting_progress_fmt">已采集 %1$d / %2$d 次播放</string>
+    <string name="research_ready_title">已达标，上传后获得 30 万 Tokens</string>
+    <string name="research_active_quota_fmt">本周期 %1$s / %2$s Tokens</string>
+    <string name="research_active_quota_left_fmt">剩余 %1$s</string>
+    <string name="research_expires_fmt">资格剩余 %1$s</string>
+    <string name="research_expiring_title">资格还剩 %1$s，上传一次续 5 天</string>
+    <string name="research_expired_title">资格已过期，上传一次即可恢复</string>
+    <string name="research_quota_exhausted_title">本周期额度已用完，上传一次重置 30 万</string>
+    <string name="research_upload_now">立即上传</string>
+    <string name="research_uploading">上传中…</string>
+    <string name="research_upload_failed_title">上传失败，数据还在本地</string>
+    <string name="research_retry">重试</string>
+    <string name="research_cooldown_title">已退出，冷却中</string>
+    <string name="research_cooldown_left_fmt">剩余 %1$d 天可重新参与</string>
+    <string name="research_cooldown_note">播放器与你自带 Key 的 AI 功能不受影响。</string>
+    <string name="research_ended_title">活动已结束</string>
+    <string name="research_ended_note">已发放的额度在剩余有效期内可继续使用。</string>
+
+    <!-- 达标卡 -->
+    <string name="research_progress_title">参与进度</string>
+    <string name="research_progress_badge_done">已达标</string>
+    <string name="research_progress_badge_left_fmt">还差 %1$d 项</string>
+    <string name="research_progress_badge_invalid">资格失效</string>
+    <string name="research_row_history">历史记录</string>
+    <string name="research_row_history_value_fmt">%1$d / %2$d 次</string>
+    <string name="research_row_first_upload">首次上传</string>
+    <string name="research_row_first_pending">待上传</string>
+    <string name="research_row_first_done">已完成</string>
+    <string name="research_row_period_upload">本周期上传</string>
+    <string name="research_row_period_left_fmt">还剩 %1$d 天</string>
+    <string name="research_row_period_uploaded">已上传</string>
+    <string name="research_row_tokens">本周期 Token</string>
+    <string name="research_row_tokens_invalid_note">已失效，未用额度作废</string>
+    <string name="research_row_tokens_soon">即将用完</string>
+    <string name="research_tokens_valid_until_fmt">有效至 %1$s</string>
+    <string name="research_progress_autodaily_hint">开启每日自动上传可保持资格长期有效</string>
+
+    <!-- 上传设置 -->
+    <string name="research_section_upload">上传设置</string>
+    <string name="research_switch_auto_daily">每日自动上传</string>
+    <string name="research_switch_auto_daily_note">每天增量上传一次，活动期间资格长期有效</string>
+    <string name="research_switch_wifi">仅 Wi-Fi 上传</string>
+    <string name="research_switch_wifi_note">资格只剩 24 小时时会自动忽略此开关</string>
+    <string name="research_last_upload">上次上传</string>
+    <string name="research_last_upload_never">从未上传</string>
+    <string name="research_plaintext_switch">上传歌曲明文</string>
+    <string name="research_plaintext_note">默认关闭。开启前只上传歌曲哈希，不包含歌名等原文。</string>
+
+    <!-- 活动公告 -->
+    <string name="research_section_notices">活动公告</string>
+    <string name="research_notices_entry_fmt">活动公告 · 共 %1$d 条</string>
+    <string name="research_notice_pinned">置顶</string>
+    <string name="research_notice_withdrawn">已撤回</string>
+    <string name="research_notice_type_rule">规则</string>
+    <string name="research_notice_type_deadline">截止</string>
+    <string name="research_notice_type_system">通知</string>
+    <string name="research_notice_effective_note">本公告自发布起生效</string>
+    <string name="research_notice_withdrawn_note_fmt">该公告已于 %1$s 撤回：%2$s</string>
+    <string name="research_notices_empty">暂无公告</string>
+    <string name="research_notices_offline">离线中，展示上次数据</string>
+    <string name="research_notices_load_more">加载更多</string>
+
+    <!-- 协议 -->
+    <string name="research_legal_agreement_title">活动用户协议</string>
+    <string name="research_legal_privacy_title">隐私政策补充条款</string>
+    <string name="research_legal_agree">同意并继续</string>
+    <string name="research_legal_required_note">参与前请完整阅读以下两份文档。</string>
+    <string name="research_legal_offline_cached">离线中，展示本地缓存版本</string>
+    <string name="research_legal_load_failed">文档加载失败</string>
+    <string name="research_legal_retry">重试</string>
+
+    <!-- 退出 -->
+    <string name="research_exit">退出并删除数据</string>
+    <string name="research_exit_confirm_title">确认退出？</string>
+    <string name="research_exit_confirm_body_fmt">退出后密钥立即失效，本周期未用完的额度一并清零；已上传的听歌记录将在 7 个工作日内删除；同一设备 %1$d 天内无法重新参与。</string>
+    <string name="research_exit_confirm">确认退出</string>
+    <string name="research_cancel">取消</string>
+
+    <!-- 导出 -->
+    <string name="research_export">导出我的上传记录</string>
+    <string name="research_export_success">已导出</string>
+    <string name="research_export_failed">导出失败</string>
+
+    <!-- 密钥卡 -->
+    <string name="research_key_label">活动密钥</string>
+    <string name="research_state_label">状态</string>
+    <string name="research_state_active">生效中</string>
+    <string name="research_state_pending">待首次上传</string>
+    <string name="research_state_expired">已过期</string>
+    <string name="research_state_disabled">已吊销</string>
+
+    <!-- AI 额度条 -->
+    <string name="research_quota_bar_label">本周期 AI 额度</string>
+    <string name="research_quota_bar_remaining_fmt">剩余 %1$s Tokens</string>
+    <string name="research_quota_exhausted_hint">本周期额度已用完。上传一次可重置 30 万，或使用你自己的 Key。</string>
+
+    <!-- 错误 / 其他 -->
+    <string name="research_error_network">网络不可用，数据还在本地，稍后重试</string>
+    <string name="research_error_withdraw_network">退出请求未送达，请稍后重试</string>
+    <string name="research_upload_success_toast">已续期 5 天，额度已重置</string>
+    <string name="research_days_hours_fmt">%1$d 天 %2$d 小时</string>
+    <string name="research_days_fmt">%1$d 天</string>
+    <string name="research_hours_fmt">%1$d 小时</string>
+</resources>

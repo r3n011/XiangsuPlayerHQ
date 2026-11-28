@@ -446,6 +446,7 @@ private data class SettingsSearchItem(
 private fun getSettingsCategoryTitles(): Map<String, String> {
     return mapOf(
         SettingsCategory.AI_INTEGRATION.id to stringResource(R.string.settings_search_category_ai_integration),
+        SettingsCategory.RESEARCH.id to stringResource(R.string.settings_category_research_title),
         SettingsCategory.WEB_REMOTE.id to stringResource(R.string.settings_category_web_remote_title),
         SettingsCategory.LIBRARY.id to stringResource(R.string.settings_search_category_library),
         SettingsCategory.DOWNLOAD.id to stringResource(R.string.settings_category_download_title),
@@ -479,6 +480,9 @@ private fun getSettingsKeywordItems(): List<Pair<String, SettingsCategory>> {
         stringResource(R.string.setcat_appearance_startup_section) to SettingsCategory.APPEARANCE,
         stringResource(R.string.setcat_appearance_miniplayer_section) to SettingsCategory.APPEARANCE,
         stringResource(R.string.settings_category_api_title) to SettingsCategory.API_MANAGEMENT,
+        stringResource(R.string.settings_category_research_title) to SettingsCategory.RESEARCH,
+        stringResource(R.string.research_join) to SettingsCategory.RESEARCH,
+        stringResource(R.string.research_quota_bar_label) to SettingsCategory.RESEARCH,
         stringResource(R.string.settings_category_glyph_matrix_title) to SettingsCategory.GLYPH_MATRIX,
         stringResource(R.string.settings_search_keyword_lyrics) to SettingsCategory.PLAYBACK,
         stringResource(R.string.settings_search_keyword_playback) to SettingsCategory.PLAYBACK,
@@ -1039,6 +1043,14 @@ private fun TabletSettingsScreen(
                             showBackButton = false,
                             onOpenPluginCenter = {
                                 outerNavController.navigateSafely(Screen.PluginCenter.route)
+                            },
+                            onOpenResearchLegal = { consentMode ->
+                                outerNavController.navigateSafely(
+                                    Screen.ResearchLegal.createRoute(consentMode)
+                                )
+                            },
+                            onOpenResearchNotices = {
+                                outerNavController.navigateSafely(Screen.ResearchNotices.route)
                             }
                         )
                     }
@@ -1467,6 +1479,7 @@ private fun getCategoryColors(category: SettingsCategory, isDark: Boolean): Pair
             SettingsCategory.ABOUT -> Color(0xFF3F474D) to Color(0xFFDEE3EB) 
             SettingsCategory.API_MANAGEMENT -> Color(0xFF4A4458) to Color(0xFFE8DEF8)
             SettingsCategory.PLUGINS -> Color(0xFF4A3A5C) to Color(0xFFEADDFF)
+            SettingsCategory.RESEARCH -> Color(0xFF1F4C3F) to Color(0xFFC9F2D9)
         }
     } else {
         when (category) {
@@ -1487,6 +1500,7 @@ private fun getCategoryColors(category: SettingsCategory, isDark: Boolean): Pair
             SettingsCategory.ABOUT -> Color(0xFFEFF1F7) to Color(0xFF44474F)
             SettingsCategory.API_MANAGEMENT -> Color(0xFFE8DEF8) to Color(0xFF4A4458)
             SettingsCategory.PLUGINS -> Color(0xFFEADDFF) to Color(0xFF4A3A5C)
+            SettingsCategory.RESEARCH -> Color(0xFFC9F2D9) to Color(0xFF0B3D2C)
         }
     }
 }

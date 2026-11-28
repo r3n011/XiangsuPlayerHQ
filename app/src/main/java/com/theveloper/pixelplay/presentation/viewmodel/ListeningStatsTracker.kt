@@ -31,7 +31,8 @@ import timber.log.Timber
 @Singleton
 class ListeningStatsTracker @Inject constructor(
     private val dailyMixManager: DailyMixManager,
-    private val playbackStatsRepository: PlaybackStatsRepository
+    private val playbackStatsRepository: PlaybackStatsRepository,
+    private val researchEventRecorder: com.theveloper.pixelplay.data.research.ResearchEventRecorder
 ) {
     private var currentSession: ActiveSession? = null
     private var pendingVoluntarySongId: String? = null
@@ -247,6 +248,7 @@ class ListeningStatsTracker @Inject constructor(
                 songId = songId,
                 listened = listened,
                 timestamp = timestamp,
+                startedAtSec = session.startedAtEpochMs / 1000,
                 forceSynchronous = forceSynchronousPersistence
             )
         }
@@ -272,18 +274,29 @@ class ListeningStatsTracker @Inject constructor(
         songId: String,
         listened: Long,
         timestamp: Long,
+        startedAtSec: Long,
         forceSynchronous: Boolean
     ) {
         persistenceScope.launch {
             runCatching {
-                persistPlaybackInternal(songId = songId, listened = listened, timestamp = timestamp)
+                persistPlaybackInternal(
+                    songId = songId,
+                    listened = listened,
+                    timestamp = timestamp,
+                    startedAtSec = startedAtSec
+                )
             }.onFailure { throwable ->
                 Timber.e(throwable, "Failed to persist listening session for song=%s", songId)
             }
         }
     }
 
-    private suspend fun persistPlaybackInternal(songId: String, listened: Long, timestamp: Long) {
+    private suspend fun persistPlaybackInternal(
+        songId: String,
+        listened: Long,
+        timestamp: Long,
+        startedAtSec: Long
+    ) {
         dailyMixManager.recordPlay(
             songId = songId,
             songDurationMs = listened,
@@ -293,6 +306,12 @@ class ListeningStatsTracker @Inject constructor(
             songId = songId,
             durationMs = listened,
             timestamp = timestamp
+        )
+        // 听歌数据研究计划：写入待上传事件队列（默认只存哈希，未参与时仍会落库但不上传）
+        researchEventRecorder.recordSession(
+            songId = songId,
+            listenedMs = listened,
+            playedAtSec = startedAtSec
         )
     }
 

@@ -9,6 +9,8 @@ import com.theveloper.pixelplay.presentation.screens.WordDelimiterConfigScreen
 import com.theveloper.pixelplay.presentation.screens.ArtistWhitelistConfigScreen
 import com.theveloper.pixelplay.presentation.screens.EasterEggScreen
 import com.theveloper.pixelplay.presentation.screens.DeviceCapabilitiesScreen
+import com.theveloper.pixelplay.presentation.screens.ResearchLegalScreen
+import com.theveloper.pixelplay.presentation.screens.ResearchNoticesScreen
 import android.annotation.SuppressLint
 import androidx.annotation.OptIn
 import androidx.compose.animation.EnterTransition
@@ -434,6 +436,27 @@ fun AppNavigation(
                             navController.navigateSafely(Screen.SettingsCategory.createRoute(category.id))
                         },
                         playerViewModel = playerViewModel
+                    )
+                }
+            }
+            composable(
+                route = Screen.ResearchLegal.route,
+                arguments = listOf(navArgument("consent") { type = NavType.BoolType; defaultValue = false }),
+            ) { backStackEntry ->
+                ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
+                    val consentMode = backStackEntry.arguments?.getBoolean("consent") ?: false
+                    ResearchLegalScreen(
+                        consentMode = consentMode,
+                        onBack = { navController.popBackStack() },
+                    )
+                }
+            }
+            composable(
+                route = Screen.ResearchNotices.route,
+            ) {
+                ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
+                    ResearchNoticesScreen(
+                        onBack = { navController.popBackStack() },
                     )
                 }
             }

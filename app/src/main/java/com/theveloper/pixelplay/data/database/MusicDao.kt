@@ -177,11 +177,23 @@ interface MusicDao {
     @Update
     suspend fun updateArtists(artists: List<ArtistEntity>)
 
+    // Raw single-batch lookups: the IN clause must stay under SQLITE_MAX_VARIABLE_NUMBER placeholders.
     @Query("SELECT * FROM artists WHERE id IN (:artistIds)")
-    suspend fun getArtistsByIds(artistIds: List<Long>): List<ArtistEntity>
+    suspend fun getArtistsByIdsBatch(artistIds: List<Long>): List<ArtistEntity>
 
     @Query("SELECT * FROM albums WHERE id IN (:albumIds)")
-    suspend fun getAlbumsByIds(albumIds: List<Long>): List<AlbumEntity>
+    suspend fun getAlbumsByIdsBatch(albumIds: List<Long>): List<AlbumEntity>
+
+    /**
+     * Chunked ID lookups: an IN list beyond the SQLite variable limit (999 on older devices)
+     * throws "too many SQL variables" — e.g. incremental sync merging a 1000+ artist library.
+     * Splitting into batches keeps every compiled statement within the limit.
+     */
+    suspend fun getArtistsByIds(artistIds: List<Long>): List<ArtistEntity> =
+        artistIds.chunked(ID_QUERY_BATCH_SIZE).flatMap { getArtistsByIdsBatch(it) }
+
+    suspend fun getAlbumsByIds(albumIds: List<Long>): List<AlbumEntity> =
+        albumIds.chunked(ID_QUERY_BATCH_SIZE).flatMap { getAlbumsByIdsBatch(it) }
 
     @Transaction
     suspend fun insertSongs(songs: List<SongEntity>) {
@@ -2159,6 +2171,13 @@ interface MusicDao {
          * Allows database reads to interleave with writes for better UX.
          */
         const val SONG_BATCH_SIZE = 500
+
+        /**
+         * Batch size for IN (:ids) lookups (getArtistsByIds / getAlbumsByIds).
+         * Each id binds exactly 1 variable, so 500 keeps every IN clause well
+         * below SQLITE_MAX_VARIABLE_NUMBER even on old devices.
+         */
+        const val ID_QUERY_BATCH_SIZE = 500
     }
 }
 

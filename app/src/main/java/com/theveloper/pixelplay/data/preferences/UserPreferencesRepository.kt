@@ -387,6 +387,19 @@ class UserPreferencesRepository @Inject constructor(
         val BACKGROUND_UPDATE_DOWNLOAD = booleanPreferencesKey("background_update_download")
         val UPDATE_WIFI_CHARGING_ONLY = booleanPreferencesKey("update_wifi_charging_only")
 
+        // 听歌数据研究计划（非敏感偏好；凭据在 ResearchAuthStore 加密库）
+        val RESEARCH_AUTO_DAILY = booleanPreferencesKey("research_auto_daily")
+        val RESEARCH_WIFI_ONLY = booleanPreferencesKey("research_wifi_only")
+        val RESEARCH_PLAINTEXT_ENABLED = booleanPreferencesKey("research_plaintext_enabled")
+        val RESEARCH_CONSENT_AGREEMENT_VERSION = stringPreferencesKey("research_consent_agreement_version")
+        val RESEARCH_CONSENT_PRIVACY_VERSION = stringPreferencesKey("research_consent_privacy_version")
+        val RESEARCH_CONSENT_ACCEPTED_AT = longPreferencesKey("research_consent_accepted_at")
+        val RESEARCH_LAST_READ_NOTICE_ID = stringPreferencesKey("research_last_read_notice_id")
+        val RESEARCH_LAST_UPLOAD_AT = longPreferencesKey("research_last_upload_at")
+        val RESEARCH_LAST_UPLOAD_COUNT = intPreferencesKey("research_last_upload_count")
+        val RESEARCH_PENDING_WITHDRAW = booleanPreferencesKey("research_pending_withdraw")
+        val RESEARCH_COOLDOWN_UNTIL = longPreferencesKey("research_cooldown_until")
+
         // Equalizer view
         val VIEW_MODE = stringPreferencesKey("equalizer_view_mode")
         val CUSTOM_PRESETS = stringPreferencesKey("custom_presets_json")
@@ -672,6 +685,86 @@ class UserPreferencesRepository @Inject constructor(
 
     suspend fun setInitialSetupDone(isDone: Boolean) {
         dataStore.edit { it[PreferencesKeys.INITIAL_SETUP_DONE] = isDone }
+    }
+
+    // ─── 听歌数据研究计划（非敏感偏好；凭据在 ResearchAuthStore 加密库）─────────
+
+    val researchAutoDailyFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.RESEARCH_AUTO_DAILY] ?: false }
+
+    suspend fun setResearchAutoDaily(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.RESEARCH_AUTO_DAILY] = enabled }
+    }
+
+    val researchWifiOnlyFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.RESEARCH_WIFI_ONLY] ?: true }
+
+    suspend fun setResearchWifiOnly(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.RESEARCH_WIFI_ONLY] = enabled }
+    }
+
+    val researchPlaintextEnabledFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.RESEARCH_PLAINTEXT_ENABLED] ?: false }
+
+    suspend fun setResearchPlaintextEnabled(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.RESEARCH_PLAINTEXT_ENABLED] = enabled }
+    }
+
+    val researchConsentAgreementVersionFlow: Flow<String> =
+        pref { it[PreferencesKeys.RESEARCH_CONSENT_AGREEMENT_VERSION] ?: "" }
+
+    val researchConsentPrivacyVersionFlow: Flow<String> =
+        pref { it[PreferencesKeys.RESEARCH_CONSENT_PRIVACY_VERSION] ?: "" }
+
+    val researchConsentAcceptedAtFlow: Flow<Long> =
+        pref { it[PreferencesKeys.RESEARCH_CONSENT_ACCEPTED_AT] ?: 0L }
+
+    suspend fun setResearchConsent(
+        agreementVersion: String,
+        privacyVersion: String,
+        acceptedAt: Long
+    ) {
+        dataStore.edit {
+            it[PreferencesKeys.RESEARCH_CONSENT_AGREEMENT_VERSION] = agreementVersion
+            it[PreferencesKeys.RESEARCH_CONSENT_PRIVACY_VERSION] = privacyVersion
+            it[PreferencesKeys.RESEARCH_CONSENT_ACCEPTED_AT] = acceptedAt
+        }
+    }
+
+    val researchLastReadNoticeIdFlow: Flow<String> =
+        pref { it[PreferencesKeys.RESEARCH_LAST_READ_NOTICE_ID] ?: "" }
+
+    suspend fun setResearchLastReadNoticeId(noticeId: String) {
+        dataStore.edit { it[PreferencesKeys.RESEARCH_LAST_READ_NOTICE_ID] = noticeId }
+    }
+
+    val researchLastUploadAtFlow: Flow<Long> =
+        pref { it[PreferencesKeys.RESEARCH_LAST_UPLOAD_AT] ?: 0L }
+
+    val researchLastUploadCountFlow: Flow<Int> =
+        pref { it[PreferencesKeys.RESEARCH_LAST_UPLOAD_COUNT] ?: 0 }
+
+    suspend fun setResearchLastUpload(timestampSec: Long, count: Int) {
+        dataStore.edit {
+            it[PreferencesKeys.RESEARCH_LAST_UPLOAD_AT] = timestampSec
+            it[PreferencesKeys.RESEARCH_LAST_UPLOAD_COUNT] = count
+        }
+    }
+
+    /** 退出请求未送达时置位；下次联网自动重试 DELETE /me（规范 05 §5.1 失败处理） */
+    val researchPendingWithdrawFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.RESEARCH_PENDING_WITHDRAW] ?: false }
+
+    suspend fun setResearchPendingWithdraw(pending: Boolean) {
+        dataStore.edit { it[PreferencesKeys.RESEARCH_PENDING_WITHDRAW] = pending }
+    }
+
+    /** 退出冷却截止（Unix 秒）；期内 enroll 返回 COOLDOWN（规范 03 §6.1） */
+    val researchCooldownUntilFlow: Flow<Long> =
+        pref { it[PreferencesKeys.RESEARCH_COOLDOWN_UNTIL] ?: 0L }
+
+    suspend fun setResearchCooldownUntil(epochSec: Long) {
+        dataStore.edit { it[PreferencesKeys.RESEARCH_COOLDOWN_UNTIL] = epochSec }
     }
 
     // ─── 首页卡片顺序（逗号分隔保序）─────────────────────────────────────────

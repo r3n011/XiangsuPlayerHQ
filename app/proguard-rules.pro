@@ -73,6 +73,12 @@
 }
 -dontwarn kotlinx.serialization.**
 
+# 听歌数据研究计划 DTO：整包保留（含生成的 $$serializer 类）。
+# 旧版通用规则在 R8 下存在水平合并/裁剪缺口，曾导致 release 包协议接口
+# 解析失败（debug 正常、接口本身正常）。整包 keep 一劳永逸。
+-keep class com.theveloper.pixelplay.data.research.** { *; }
+-dontwarn com.theveloper.pixelplay.data.research.**
+
 -keepclassmembers class ** {
     @com.google.gson.annotations.SerializedName <fields>;
 }

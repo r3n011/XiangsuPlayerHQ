@@ -15,6 +15,10 @@
     <exclude domain="sharedpref" path="gdrive_prefs_plain.xml"/>
     <exclude domain="sharedpref" path="qqmusic_prefs_plain.xml"/>
 
+    <!-- 听歌数据研究计划：deviceCode / licenseKey / signKey 凭据，不随备份漫游 -->
+    <exclude domain="sharedpref" path="research_prefs.xml"/>
+    <exclude domain="sharedpref" path="research_prefs_plain.xml"/>
+
     <!-- Exclude DataStore preferences that may contain API keys/sensitive settings -->
     <exclude domain="file" path="datastore/settings.preferences_pb"/>
 </full-backup-content>

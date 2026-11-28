@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Listening Data Research Program (听歌数据研究计划) -->
+
+    <!-- State cards -->
+    <string name="research_state_not_participating_title">Share your listening history for free in-app AI quota</string>
+    <string name="research_join">Join</string>
+    <string name="research_not_participating_note">Everything works fine without joining.</string>
+    <string name="research_collecting_title">Preparing your listening history</string>
+    <string name="research_collecting_progress_fmt">Collected %1$d / %2$d plays</string>
+    <string name="research_ready_title">Ready — upload to get 300K Tokens</string>
+    <string name="research_active_quota_fmt">This period %1$s / %2$s Tokens</string>
+    <string name="research_active_quota_left_fmt">%1$s left</string>
+    <string name="research_expires_fmt">Quota ends in %1$s</string>
+    <string name="research_expiring_title">Quota ends in %1$s — upload once to extend 5 days</string>
+    <string name="research_expired_title">Quota expired — upload once to restore</string>
+    <string name="research_quota_exhausted_title">Period quota used up — upload once to reset 300K</string>
+    <string name="research_upload_now">Upload now</string>
+    <string name="research_uploading">Uploading…</string>
+    <string name="research_upload_failed_title">Upload failed — your data is still local</string>
+    <string name="research_retry">Retry</string>
+    <string name="research_cooldown_title">Exited, cooling down</string>
+    <string name="research_cooldown_left_fmt">%1$d days until you can join again</string>
+    <string name="research_cooldown_note">The player and AI with your own key are unaffected.</string>
+    <string name="research_ended_title">The program has ended</string>
+    <string name="research_ended_note">Issued quota stays usable until it expires.</string>
+
+    <!-- Progress card -->
+    <string name="research_progress_title">Participation progress</string>
+    <string name="research_progress_badge_done">Ready</string>
+    <string name="research_progress_badge_left_fmt">%1$d to go</string>
+    <string name="research_progress_badge_invalid">Invalid</string>
+    <string name="research_row_history">Listening records</string>
+    <string name="research_row_history_value_fmt">%1$d / %2$d plays</string>
+    <string name="research_row_first_upload">First upload</string>
+    <string name="research_row_first_pending">Pending</string>
+    <string name="research_row_first_done">Done</string>
+    <string name="research_row_period_upload">Period upload</string>
+    <string name="research_row_period_left_fmt">%1$d days left</string>
+    <string name="research_row_period_uploaded">Uploaded</string>
+    <string name="research_row_tokens">Period tokens</string>
+    <string name="research_row_tokens_invalid_note">Expired — unused tokens are void</string>
+    <string name="research_row_tokens_soon">Running out</string>
+    <string name="research_tokens_valid_until_fmt">Valid until %1$s</string>
+    <string name="research_progress_autodaily_hint">Turn on daily auto upload to keep your quota alive during the program.</string>
+
+    <!-- Upload settings -->
+    <string name="research_section_upload">Upload settings</string>
+    <string name="research_switch_auto_daily">Daily auto upload</string>
+    <string name="research_switch_auto_daily_note">Upload increments every day; quota stays valid during the program</string>
+    <string name="research_switch_wifi">Upload over Wi-Fi only</string>
+    <string name="research_switch_wifi_note">Ignored automatically when quota ends within 24 hours</string>
+    <string name="research_last_upload">Last upload</string>
+    <string name="research_last_upload_never">Never</string>
+    <string name="research_plaintext_switch">Upload song names in plain text</string>
+    <string name="research_plaintext_note">Off by default. Only song hashes are uploaded unless you enable this.</string>
+
+    <!-- Notices -->
+    <string name="research_section_notices">Program notices</string>
+    <string name="research_notices_entry_fmt">Program notices · %1$d posts</string>
+    <string name="research_notice_pinned">Pinned</string>
+    <string name="research_notice_withdrawn">Withdrawn</string>
+    <string name="research_notice_type_rule">Rule</string>
+    <string name="research_notice_type_deadline">Deadline</string>
+    <string name="research_notice_type_system">Notice</string>
+    <string name="research_notice_effective_note">Effective since published</string>
+    <string name="research_notice_withdrawn_note_fmt">Withdrawn on %1$s: %2$s</string>
+    <string name="research_notices_empty">No notices yet</string>
+    <string name="research_notices_offline">Offline — showing cached data</string>
+    <string name="research_notices_load_more">Load more</string>
+
+    <!-- Legal -->
+    <string name="research_legal_agreement_title">Program agreement</string>
+    <string name="research_legal_privacy_title">Privacy supplement</string>
+    <string name="research_legal_agree">Agree and continue</string>
+    <string name="research_legal_required_note">Read both documents before joining.</string>
+    <string name="research_legal_offline_cached">Offline — showing cached copy</string>
+    <string name="research_legal_load_failed">Couldn\'t load the document</string>
+    <string name="research_legal_retry">Retry</string>
+
+    <!-- Exit -->
+    <string name="research_exit">Exit and delete data</string>
+    <string name="research_exit_confirm_title">Exit the program?</string>
+    <string name="research_exit_confirm_body_fmt">Your key is revoked immediately and unused Tokens are cleared. Uploaded listening records are deleted within 7 business days. The same device cannot rejoin for %1$d days.</string>
+    <string name="research_exit_confirm">Confirm exit</string>
+    <string name="research_cancel">Cancel</string>
+
+    <!-- Export -->
+    <string name="research_export">Export my upload records</string>
+    <string name="research_export_success">Records exported</string>
+    <string name="research_export_failed">Export failed</string>
+
+    <!-- Key card -->
+    <string name="research_key_label">License key</string>
+    <string name="research_state_label">Status</string>
+    <string name="research_state_active">Active</string>
+    <string name="research_state_pending">Pending first upload</string>
+    <string name="research_state_expired">Expired</string>
+    <string name="research_state_disabled">Revoked</string>
+
+    <!-- AI quota bar -->
+    <string name="research_quota_bar_label">This period AI quota</string>
+    <string name="research_quota_bar_remaining_fmt">%1$s Tokens left</string>
+    <string name="research_quota_exhausted_hint">Period quota used up. Upload once to reset 300K, or use your own key.</string>
+
+    <!-- Errors / misc -->
+    <string name="research_error_network">Network unavailable — data stays local, try again later</string>
+    <string name="research_error_withdraw_network">Exit request was not delivered — try again later</string>
+    <string name="research_upload_success_toast">Quota renewed for 5 days, tokens reset</string>
+    <string name="research_days_hours_fmt">%1$dd %2$dh</string>
+    <string name="research_days_fmt">%1$d days</string>
+    <string name="research_hours_fmt">%1$d hours</string>
+</resources>

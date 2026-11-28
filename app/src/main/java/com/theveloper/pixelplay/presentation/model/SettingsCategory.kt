@@ -9,6 +9,7 @@ import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Extension
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.GridView
+import androidx.compose.material.icons.rounded.Insights
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.MusicNote
@@ -81,6 +82,13 @@ enum class SettingsCategory(
         titleRes = R.string.settings_category_ai_title,
         subtitleRes = R.string.settings_category_ai_subtitle,
         iconRes = R.drawable.gemini_ai
+    ),
+    // 听歌数据研究计划：自愿参与的听歌记录研究活动，回报 App 内免费 AI 额度
+    RESEARCH(
+        id = "research",
+        titleRes = R.string.settings_category_research_title,
+        subtitleRes = R.string.settings_category_research_subtitle,
+        icon = Icons.Rounded.Insights
     ),
     WEB_REMOTE(
         id = "web_remote",

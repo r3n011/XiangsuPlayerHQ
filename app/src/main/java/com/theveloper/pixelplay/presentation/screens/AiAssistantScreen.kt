@@ -194,6 +194,8 @@ fun AiAssistantScreen(
                     .imePadding()
                     .padding(horizontal = 12.dp, vertical = 10.dp)
             ) {
+                // 听歌数据研究计划：参与时常驻额度条（本周期 AI 额度）
+                ResearchQuotaBar()
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()

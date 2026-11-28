@@ -32,6 +32,10 @@
     <string
         name="settings_category_ai_subtitle"
     >AI providers, API keys, and model settings</string>
+    <string name="settings_category_research_title">Listening Data Research</string>
+    <string
+        name="settings_category_research_subtitle"
+    >Join with your listening history for free in-app AI quota</string>
     <string name="settings_category_web_remote_title">Web Remote</string>
     <string
         name="settings_category_web_remote_subtitle"

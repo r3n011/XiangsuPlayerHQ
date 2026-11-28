@@ -768,7 +768,7 @@ private enum class OnboardingStep(
         )
     ),
     FINISHED(
-        Icons.Rounded.CheckCircle,
+        Icons.Rounded.MusicNote,
         R.string.onboarding_step_finished_title,
         R.string.onboarding_step_finished_desc,
         emptyList()
@@ -1032,7 +1032,7 @@ private fun StepCard(
 
             Spacer(Modifier.height(24.dp))
 
-            // 亮点功能卡（Rhythm：primaryContainer + 标题 + 亮点条目列表）
+            // 亮点条目卡（primaryContainer + 小圆点条目列表，无标题行，弱化清单感）
             if (step.tips.isNotEmpty()) {
                 Card(
                     colors = CardDefaults.cardColors(
@@ -1041,29 +1041,8 @@ private fun StepCard(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(20.dp)) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(bottom = 12.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.AutoAwesome,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text(
-                                text = stringResource(R.string.onboarding_features),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        }
                         step.tips.forEach { tipRes ->
-                            LibraryTipItem(
-                                icon = Icons.Rounded.CheckCircle,
-                                text = stringResource(tipRes)
-                            )
+                            LibraryTipItem(text = stringResource(tipRes))
                         }
                     }
                 }
@@ -1090,10 +1069,9 @@ private fun StepCard(
     }
 }
 
-/** 亮点条目（Rhythm LibraryTipItem）：图标 + 文字 */
+/** 亮点条目：小圆点 + 文字 */
 @Composable
 private fun LibraryTipItem(
-    icon: ImageVector,
     text: String
 ) {
     Row(
@@ -1101,11 +1079,11 @@ private fun LibraryTipItem(
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         modifier = Modifier.padding(vertical = 6.dp)
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(20.dp)
+        Box(
+            modifier = Modifier
+                .size(6.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.55f))
         )
         Text(
             text = text,

@@ -5,6 +5,15 @@
             <certificates src="user" />
         </trust-anchors>
     </base-config>
+    <!-- 听歌数据研究计划服务端：仅 HTTPS（禁明文），SPKI pin 在 OkHttp
+         CertificatePinner 层启用（见 AppModule @ResearchOkHttpClient，
+         pins 由服务端下发后填入）。不信任 user 锚，防用户装 CA 抓包。 -->
+    <domain-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+        <domain includeSubdomains="true">xiangsudev.cn</domain>
+    </domain-config>
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="true">kuwo.cn</domain>
         <domain includeSubdomains="true">kugou.com</domain>

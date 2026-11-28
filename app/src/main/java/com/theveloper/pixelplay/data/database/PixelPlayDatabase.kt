@@ -34,9 +34,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         JellyfinSongEntity::class,
         JellyfinPlaylistEntity::class,
         AiCacheEntity::class,
-        AiUsageEntity::class
+        AiUsageEntity::class,
+        ListenEventEntity::class
     ],
-    version = 47,
+    version = 48,
     exportSchema = true
 )
 abstract class PixelPlayDatabase : RoomDatabase() {
@@ -56,6 +57,7 @@ abstract class PixelPlayDatabase : RoomDatabase() {
     abstract fun jellyfinDao(): JellyfinDao
     abstract fun aiCacheDao(): AiCacheDao
     abstract fun aiUsageDao(): AiUsageDao
+    abstract fun researchEventDao(): ResearchEventDao
 
     companion object {
         // Gap-bridging no-op migrations for missing version ranges.
@@ -887,6 +889,38 @@ abstract class PixelPlayDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE songs ADD COLUMN title_sort_key BLOB")
                 db.execSQL("ALTER TABLE songs ADD COLUMN artist_sort_key BLOB")
                 db.execSQL("ALTER TABLE songs ADD COLUMN album_sort_key BLOB")
+            }
+        }
+
+        // 47→48: 听歌数据研究计划 —— 新增待上传听歌事件队列表（仅新数据，无历史迁移）。
+        // 字段语义见 ListenEventEntity；保留策略 ≤5000 条 / ≤90 天由 ResearchEventDao 裁剪。
+        val MIGRATION_47_48 = object : Migration(47, 48) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `listen_events` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `song_key` TEXT NOT NULL,
+                        `title_hash` TEXT NOT NULL,
+                        `artist_hash` TEXT NOT NULL,
+                        `album_hash` TEXT NOT NULL,
+                        `source` TEXT NOT NULL,
+                        `played_at` INTEGER NOT NULL,
+                        `duration_sec` INTEGER NOT NULL,
+                        `played_sec` INTEGER NOT NULL,
+                        `completed` INTEGER NOT NULL,
+                        `skipped` INTEGER NOT NULL,
+                        `play_mode` TEXT NOT NULL,
+                        `quality` TEXT NOT NULL,
+                        `batch_id` TEXT,
+                        `plain_title` TEXT,
+                        `plain_artist` TEXT,
+                        `plain_album` TEXT
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_listen_events_played_at ON listen_events(played_at)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_listen_events_batch_id ON listen_events(batch_id)")
             }
         }
 

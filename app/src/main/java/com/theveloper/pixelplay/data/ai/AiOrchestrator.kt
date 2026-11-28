@@ -13,6 +13,7 @@ import com.theveloper.pixelplay.di.AppScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 import timber.log.Timber
@@ -27,6 +28,8 @@ class AiOrchestrator @Inject constructor(
     private val cacheDao: AiCacheDao,
     private val usageDao: AiUsageDao,
     private val promptEngine: AiSystemPromptEngine,
+    // 听歌数据研究计划：参与且额度充足时聊天优先走活动代理，失败回落用户自填 Key
+    private val researchAiClient: com.theveloper.pixelplay.data.research.ResearchAiClient,
     @AppScope private val appScope: CoroutineScope
 ) {
     // Cooldown timer: Provider -> Expiry Timestamp
@@ -183,6 +186,34 @@ class AiOrchestrator @Inject constructor(
             // Cache expired — proceed with fresh generation
         }
 
+        // ── 听歌数据研究计划：活动额度代理优先（参与且额度充足时） ──
+        // 失败（含上游不可用/额度外错误）静默回落用户自填 Key 链，不打断生成。
+        if (researchAiClient.isProxyAvailable()) {
+            try {
+                val proxyPersona = getBasePersona(userProvider)
+                val proxySystemPrompt = promptEngine.buildPrompt(proxyPersona, type, context)
+                val proxyResponse = researchAiClient.generateContent(
+                    systemPrompt = proxySystemPrompt,
+                    prompt = prompt,
+                    temperature = resolvedTemperature
+                )
+                if (proxyResponse.isNotBlank()) {
+                    val estimatedPromptTokens = (proxySystemPrompt.length + prompt.length) / 4
+                    val estimatedOutputTokens = proxyResponse.length / 4
+                    cacheDao.insert(
+                        AiCacheEntity(
+                            promptHash = hash,
+                            responseJson = proxyResponse,
+                            timestamp = System.currentTimeMillis()
+                        )
+                    )
+                    return proxyResponse
+                }
+            } catch (e: Exception) {
+                Timber.tag("AiOrchestrator").w(e, "Research proxy failed, falling back to user providers")
+            }
+        }
+
         val providersToTry = com.theveloper.pixelplay.data.ai.provider.AiProviderSupport.buildProviderChain(userProvider)
         val failedProviders = mutableListOf<String>()
         val now = System.currentTimeMillis()
@@ -305,6 +336,22 @@ class AiOrchestrator @Inject constructor(
         val resolvedTemperature = resolveTemperature(type, temperature)
         val userProviderStr = preferencesRepo.aiProvider.first()
         val userProvider = AiProvider.fromString(userProviderStr)
+
+        // ── 活动额度代理优先（失败回落用户 Key 链） ──
+        if (researchAiClient.isProxyAvailable()) {
+            try {
+                val proxyPersona = getBasePersona(userProvider)
+                val proxySystemPrompt = promptEngine.buildPrompt(proxyPersona, type, context)
+                return researchAiClient.generateContentStream(
+                    systemPrompt = proxySystemPrompt,
+                    prompt = prompt,
+                    temperature = resolvedTemperature
+                ).map { it.text }
+            } catch (e: Exception) {
+                Timber.tag("AiOrchestrator").w(e, "Research proxy stream failed, falling back")
+            }
+        }
+
         val providersToTry = com.theveloper.pixelplay.data.ai.provider.AiProviderSupport.buildProviderChain(userProvider)
         val failedProviders = mutableListOf<String>()
 
@@ -348,6 +395,22 @@ class AiOrchestrator @Inject constructor(
         val resolvedTemperature = resolveTemperature(type, temperature)
         val userProviderStr = preferencesRepo.aiProvider.first()
         val userProvider = AiProvider.fromString(userProviderStr)
+
+        // ── 活动额度代理优先（失败回落用户 Key 链） ──
+        if (researchAiClient.isProxyAvailable()) {
+            try {
+                val proxyPersona = getBasePersona(userProvider)
+                val proxySystemPrompt = promptEngine.buildPrompt(proxyPersona, type, context)
+                return researchAiClient.generateContentStream(
+                    systemPrompt = proxySystemPrompt,
+                    prompt = prompt,
+                    temperature = resolvedTemperature
+                )
+            } catch (e: Exception) {
+                Timber.tag("AiOrchestrator").w(e, "Research proxy reasoning stream failed, falling back")
+            }
+        }
+
         val providersToTry = com.theveloper.pixelplay.data.ai.provider.AiProviderSupport.buildProviderChain(userProvider)
         val failedProviders = mutableListOf<String>()
 

@@ -62,6 +62,7 @@ import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import okhttp3.CertificatePinner
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -174,7 +175,8 @@ object AppModule {
             PixelPlayDatabase.MIGRATION_43_44,
             PixelPlayDatabase.MIGRATION_44_45,
             PixelPlayDatabase.MIGRATION_45_46,
-            PixelPlayDatabase.MIGRATION_46_47
+            PixelPlayDatabase.MIGRATION_46_47,
+            PixelPlayDatabase.MIGRATION_47_48
         )
             .addCallback(PixelPlayDatabase.createRuntimeArtifactsCallback())
             .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
@@ -267,6 +269,12 @@ object AppModule {
     @Provides
     fun provideAiUsageDao(database: PixelPlayDatabase): AiUsageDao {
         return database.aiUsageDao()
+    }
+
+    @Singleton
+    @Provides
+    fun provideResearchEventDao(database: PixelPlayDatabase): com.theveloper.pixelplay.data.database.ResearchEventDao {
+        return database.researchEventDao()
     }
 
     @Singleton
@@ -505,6 +513,35 @@ object AppModule {
                 chain.proceed(requestWithUserAgent)
             }
             .addInterceptor(loggingInterceptor)
+            .build()
+    }
+
+    /**
+     * 听歌数据研究计划专用 OkHttp：在通用 client 基础上启用证书固定（SPKI pin），
+     * 拒绝用户安装的 CA，防中间人抓包/改写（规范 03 §7.1 传输层，必须项）。
+     *
+     * 请求签名（HMAC + nonce）不在拦截器层做 —— 由 ResearchApi 在构造请求时
+     * 对「实际发送的字节」统一计算，保证签名与请求体一致。
+     */
+    @Provides
+    @Singleton
+    @ResearchOkHttpClient
+    fun provideResearchOkHttpClient(baseOkHttpClient: OkHttpClient): OkHttpClient {
+        val builder = baseOkHttpClient.newBuilder()
+        // TODO(听歌数据研究计划): 服务端下发主/备 SPKI pin 后填入此处（sha256/ 前缀），
+        //  填入即启用固定；列表为空时等效未启用，不影响联调。
+        val pins = listOf<String>()
+        if (pins.isNotEmpty()) {
+            val pinnerBuilder = CertificatePinner.Builder()
+            for (pin in pins) {
+                pinnerBuilder.add(com.theveloper.pixelplay.data.research.ResearchEndpoints.HOST, pin)
+            }
+            builder.certificatePinner(pinnerBuilder.build())
+        }
+        return builder
+            .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+            .writeTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
             .build()
     }
 

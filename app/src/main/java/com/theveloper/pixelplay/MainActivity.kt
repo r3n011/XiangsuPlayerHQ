@@ -1279,7 +1279,10 @@ class MainActivity : ComponentActivity() {
                 // ⚡ 下载管理页：整屏任务列表页，隐藏底部导航栏（否则遮住最后一条任务）
                 Screen.DownloadManager.route,
                 // ⚡ 播放器与歌词外观子页：整屏设置页，隐藏导航栏（平板上同时隐藏左侧导航栏）
-                Screen.PlayerLyricsAppearance.route
+                Screen.PlayerLyricsAppearance.route,
+                // ⚡ 听歌数据研究计划：协议阅读（含「同意」按钮）/ 活动公告，整屏页隐藏导航栏
+                Screen.ResearchLegal.route,
+                Screen.ResearchNotices.route
             )
         }
         val isPlayerExpanded by remember {
@@ -1311,7 +1314,7 @@ class MainActivity : ComponentActivity() {
             }
         }
         // 平板 NavigationRail：始终保持在平板模式下可见（不因搜索激活而隐藏）
-        // ⚡ 例外：播放器与歌词外观子页是整屏设置页，平板上也隐藏左侧导航栏，避免压缩内容宽度
+        // ⚡ 产品口径：导航栏任何时候都不隐藏（含研究计划协议页 / 活动公告页）
         val shouldHideNavigationRail by remember(isSearchActive, isTabletShell, currentRoute) {
             derivedStateOf {
                 currentRoute == Screen.PlayerLyricsAppearance.route ||

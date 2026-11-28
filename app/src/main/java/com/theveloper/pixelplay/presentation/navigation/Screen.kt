@@ -32,6 +32,12 @@ sealed class Screen(val route: String) {
     object DailyMixScreen : Screen("daily_mix")
     object AiMixScreen : Screen("ai_mix")
     object AiAssistant : Screen("ai_assistant")
+    /** 听歌数据研究计划：协议阅读（consent=true 时携带「同意并继续」） */
+    object ResearchLegal : Screen("research_legal?consent={consent}") {
+        fun createRoute(consentMode: Boolean) = "research_legal?consent=$consentMode"
+    }
+    /** 听歌数据研究计划：独立活动公告页 */
+    object ResearchNotices : Screen("research_notices")
     object DailyRecommendScreen : Screen("daily_recommend")
     object ToplistDetail : Screen("toplist_detail/{entryId}") {
         fun createRoute(entryId: String) = "toplist_detail/$entryId"

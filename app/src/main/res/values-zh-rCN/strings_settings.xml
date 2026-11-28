@@ -32,6 +32,10 @@
     <string
         name="settings_category_ai_subtitle"
     >AI 服务、API 密钥和模型设置</string>
+    <string name="settings_category_research_title">听歌数据研究计划</string>
+    <string
+        name="settings_category_research_subtitle"
+    >用听歌记录换 App 内免费 AI 额度</string>
     <string name="settings_category_web_remote_title">网页遥控</string>
     <string
         name="settings_category_web_remote_subtitle"

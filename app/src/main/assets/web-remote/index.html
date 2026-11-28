@@ -481,6 +481,57 @@
     .play-btn:hover { opacity: 0.9; }
     .play-btn:active { box-shadow: var(--mdui-elevation-level-3); }
 
+    /* ── Web Volume（网页播放音量：静音按钮 + 滑条，作用于浏览器端 <audio> 输出） ── */
+    .webvol {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .webvol .webvol-btn { width: 40px; height: 40px; }
+
+    .webvol-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 76px;
+      min-width: 44px;
+      height: 4px;
+      border-radius: 2px;
+      background: var(--mdui-color-surface-variant);
+      outline: none;
+      cursor: pointer;
+      margin: 0;
+      padding: 0;
+    }
+
+    .webvol-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--mdui-color-primary);
+      cursor: pointer;
+      border: none;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+
+    .webvol-slider::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--mdui-color-primary);
+      cursor: pointer;
+      border: none;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+
+    .webvol-slider::-moz-range-track {
+      height: 4px;
+      border-radius: 2px;
+      background: var(--mdui-color-surface-variant);
+    }
+
     /* ── Device Output Switch（音频输出：手机播放 / 网页播放，置于样式切换器左侧） ── */
     .device-switch {
       display: inline-flex;
@@ -775,6 +826,11 @@
     #reactorView #rvPlay { width: 38px; height: 38px; border: 0; background: var(--rv-accent); color: #202617; flex-shrink: 0; border-radius: 50%; font-size: 15px; }
     #reactorView .timeline > div { display: flex; justify-content: space-between; font: 11px ui-monospace, Menlo, Consolas, monospace; color: var(--rv-muted); margin-top: 7px; }
     #reactorView input[type=range] { width: 100%; accent-color: var(--rv-accent); height: 4px; display: block; margin: 13px 0; cursor: pointer; }
+    #reactorView .vol-row { display: flex; align-items: center; gap: 10px; margin: 4px 0 13px; }
+    #reactorView .vol-row .vol-cap { font: 11px ui-monospace, Menlo, Consolas, monospace; color: var(--rv-muted); letter-spacing: 1px; white-space: nowrap; }
+    #reactorView .vol-row input[type=range] { flex: 1; width: auto; margin: 0; }
+    #reactorView .vol-row .webvol-btn { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; padding: 0; background: none; border: 0; color: var(--rv-muted); cursor: pointer; flex: 0 0 auto; }
+    #reactorView .vol-row .webvol-btn:hover { color: var(--rv-text); }
     #reactorView .slider-title { display: flex; align-items: center; justify-content: space-between; font-size: 14px; margin-top: 22px; }
     #reactorView .slider-title output { font: 13px ui-monospace, Menlo, Consolas, monospace; color: var(--rv-accent); }
     #reactorView .subtle { font-size: 12px; color: var(--rv-muted); }
@@ -1007,6 +1063,21 @@
     #mineView .mv-play:hover { transform: scale(1.04); box-shadow: inset 0 0 2px 1px rgba(255, 255, 255, 0.42), inset 0 0 12px 5px rgba(255, 255, 255, 0.17), 0 12px 34px rgba(0, 0, 0, 0.22), 0 0 18px rgba(255, 255, 255, 0.06); }
     #mineView .mv-play:active { transform: scale(0.95); }
     #mineView .mv-time { font: 12px ui-monospace, Menlo, Consolas, monospace; color: rgba(255, 255, 255, 0.55); }
+    #mineView .mv-vol { display: flex; align-items: center; gap: 6px; min-width: 0; }
+    #mineView .mv-vol .webvol-btn { width: 34px; height: 34px; color: rgba(240, 247, 251, 0.6); box-shadow: none; background: rgba(0, 0, 0, 0.10); }
+    #mineView .mv-vol .webvol-slider {
+      -webkit-appearance: none; appearance: none; width: 64px; height: 4px; border-radius: 2px;
+      background: rgba(255, 255, 255, 0.18); outline: none; cursor: pointer; margin: 0; padding: 0;
+    }
+    #mineView .mv-vol .webvol-slider::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none; width: 11px; height: 11px; border-radius: 50%;
+      background: #fff; cursor: pointer; border: none; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+    }
+    #mineView .mv-vol .webvol-slider::-moz-range-thumb {
+      width: 11px; height: 11px; border-radius: 50%; background: #fff; cursor: pointer; border: none;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+    }
+    #mineView .mv-vol .webvol-slider::-moz-range-track { height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.18); }
     @media (max-width: 1100px) {
       #mineView #mvControls { grid-template-columns: minmax(0, 1fr) auto; }
       #mineView .mv-modes { display: none; }
@@ -1280,6 +1351,10 @@
       background: #e4e4e7; pointer-events: none; clip-path: inset(0 100% 0 0 round 999px); will-change: clip-path;
     }
     #foliaView .fv-track input[type=range] { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+    #foliaView .fv-vol-row { grid-column: 2; grid-row: 3; padding: 0 8px; }
+    #foliaView .fv-vol-row .fv-icon-btn { width: 26px; height: 26px; flex: 0 0 auto; }
+    #foliaView .fv-vol-row .fv-icon-btn svg { width: 14px; height: 14px; }
+    #foliaView .fv-vol-row .fv-track { height: 4px; }
     @media (max-width: 640px) {
       #foliaView .fv-capsule.collapsed { width: 80%; }
       #foliaView .fv-title { font-size: 24px; }
@@ -2338,6 +2413,14 @@
             <input id="rvSeek" aria-label="播放进度" type="range" min="0" max="100" value="0" step="0.1">
             <div><span id="rvElapsed">00:00</span><span id="rvDuration">—</span></div>
           </div>
+          <div class="vol-row" title="网页播放音量（浏览器端出声时生效）">
+            <span class="vol-cap">网页音量</span>
+            <input type="range" class="webvol-slider" min="0" max="1" step="0.01" value="1" aria-label="网页播放音量">
+            <button class="webvol-btn" type="button" title="静音">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" style="display:none"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.45 4c.03-.2.05-.41.05-.63 0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45zm-2.45 1.79v2.06c2.89-.86 5-3.54 5-6.71 0-.86-.15-1.7-.42-2.46l-1.53 1.53c.31.83.45 1.7.45 2.6 0 1.77-1.02 3.29-2.5 4.03zM14 3.23v2.06c2.89.86 5 3.54 5 6.71 0 .86-.15 1.7-.42 2.46l1.53 1.53c.53-.9.89-1.91 1.09-2.98.13-.63.09-1.28-.11-1.88-.55-1.78-1.7-3.6-4.09-5.9zM4.27 3 3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4 9.91 6.09 12 8.18V4z"/></svg>
+            </button>
+          </div>
         </section>
         <section>
           <label class="caption">02 / 控制棒响应</label>
@@ -2424,6 +2507,13 @@
           </button>
         </div>
         <div class="mv-cluster mv-modes">
+          <div class="mv-vol" title="网页播放音量（浏览器端出声时生效）">
+            <button class="mv-ctrl-btn webvol-btn" title="静音" type="button">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="display:none"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.45 4c.03-.2.05-.41.05-.63 0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45zm-2.45 1.79v2.06c2.89-.86 5-3.54 5-6.71 0-.86-.15-1.7-.42-2.46l-1.53 1.53c.31.83.45 1.7.45 2.6 0 1.77-1.02 3.29-2.5 4.03zM14 3.23v2.06c2.89.86 5 3.54 5 6.71 0 .86-.15 1.7-.42 2.46l1.53 1.53c.53-.9.89-1.91 1.09-2.98.13-.63.09-1.28-.11-1.88-.55-1.78-1.7-3.6-4.09-5.9zM4.27 3 3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4 9.91 6.09 12 8.18V4z"/></svg>
+            </button>
+            <input type="range" class="webvol-slider" min="0" max="1" step="0.01" value="1" aria-label="网页播放音量">
+          </div>
           <span id="mvTime" class="mv-time">0:00 / 0:00</span>
       </div>
     </div>
@@ -2619,6 +2709,16 @@
               </div>
               <span class="fv-time" id="fvTimeRight">00:00</span>
             </div>
+            <div class="fv-progress-row fv-vol-row" title="网页播放音量（浏览器端出声时生效）">
+              <button class="fv-icon-btn webvol-btn" type="button" title="静音">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+              </button>
+              <div class="fv-track">
+                <div class="fv-track-fill webvol-fill"></div>
+                <input type="range" class="webvol-slider" min="0" max="1" step="0.01" value="1" aria-label="网页播放音量">
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -2706,6 +2806,13 @@
           <button class="icon-btn" id="nextBtn" title="下一曲">
             <svg class="icon-svg lg" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
           </button>
+          <div class="webvol" title="网页播放音量（浏览器端出声时生效）">
+            <button class="icon-btn webvol-btn" type="button" title="静音">
+              <svg class="icon-svg" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+              <svg class="icon-svg" viewBox="0 0 24 24" style="display:none"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.45 4c.03-.2.05-.41.05-.63 0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45zm-2.45 1.79v2.06c2.89-.86 5-3.54 5-6.71 0-.86-.15-1.7-.42-2.46l-1.53 1.53c.31.83.45 1.7.45 2.6 0 1.77-1.02 3.29-2.5 4.03zM14 3.23v2.06c2.89.86 5 3.54 5 6.71 0 .86-.15 1.7-.42 2.46l1.53 1.53c.53-.9.89-1.91 1.09-2.98.13-.63.09-1.28-.11-1.88-.55-1.78-1.7-3.6-4.09-5.9zM4.27 3 3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4 9.91 6.09 12 8.18V4z"/></svg>
+            </button>
+            <input type="range" class="webvol-slider" min="0" max="1" step="0.01" value="1" aria-label="网页播放音量">
+          </div>
         </div>
 
       </div>
@@ -2841,6 +2948,66 @@
     // 设备切换控件在四个视图中各有一份，统一按类名取集合
     const devicePhoneBtns = document.querySelectorAll('.device-phone-btn');
     const deviceWebBtns = document.querySelectorAll('.device-web-btn');
+
+    /* ── 网页播放音量 ──
+       控制浏览器端 <audio> 的输出音量：只有「网页播放」串流时才真正出声，「手机播放」
+       模式下网页无声，控件仅记住设置，切到网页播放即生效。四个视图各有一份控件
+       （.webvol-btn 静音按钮 / .webvol-slider 滑条 / .webvol-fill Folia 填充条），
+       统一由 applyWebVolume() 一次性同步；值经 localStorage 持久化（与主题键同一命名风格）。
+       注意 iOS Safari 不支持给媒体元素设 volume，控件在该平台上无效果但不会报错。 */
+    const WEB_VOLUME_KEY = 'webremote_web_volume';
+    const WEB_VOLUME_MUTED_KEY = 'webremote_web_volume_muted';
+    let webVolume = 1;
+    let webVolumeMuted = false;
+    try {
+      const savedWebVolume = parseFloat(localStorage.getItem(WEB_VOLUME_KEY));
+      if (!isNaN(savedWebVolume)) webVolume = Math.min(1, Math.max(0, savedWebVolume));
+      webVolumeMuted = localStorage.getItem(WEB_VOLUME_MUTED_KEY) === '1';
+    } catch (e) { /* localStorage 不可用（隐私模式等）：用默认值 */ }
+
+    function persistWebVolume() {
+      try {
+        localStorage.setItem(WEB_VOLUME_KEY, String(webVolume));
+        localStorage.setItem(WEB_VOLUME_MUTED_KEY, webVolumeMuted ? '1' : '0');
+      } catch (e) { /* 忽略持久化失败 */ }
+    }
+
+    function applyWebVolume() {
+      const effective = webVolumeMuted ? 0 : webVolume;
+      audioPlayer.volume = effective;
+      document.querySelectorAll('.webvol-slider').forEach((el) => { el.value = effective; });
+      document.querySelectorAll('.webvol-fill').forEach((el) => { el.style.width = (effective * 100) + '%'; });
+      document.querySelectorAll('.webvol-btn').forEach((btn) => {
+        const muted = effective === 0;
+        btn.classList.toggle('muted', muted);
+        btn.title = muted ? '取消静音' : '静音';
+        const icons = btn.querySelectorAll('svg');
+        icons.forEach((svg, idx) => { svg.style.display = idx === (muted ? 1 : 0) ? '' : 'none'; });
+      });
+    }
+
+    function setWebVolume(v) {
+      webVolume = Math.min(1, Math.max(0, isNaN(v) ? webVolume : v));
+      if (webVolume > 0) webVolumeMuted = false;   // 拖动滑条即解除静音
+      persistWebVolume();
+      applyWebVolume();
+    }
+
+    function toggleWebVolumeMute() {
+      if (webVolume <= 0) return;                  // 音量为 0 时静音无意义，保持可一键拉起
+      webVolumeMuted = !webVolumeMuted;
+      persistWebVolume();
+      applyWebVolume();
+    }
+
+    // 四份控件共用一套状态：滑条拖动 / 静音按钮点击任意一份，其余视图自动跟随
+    document.querySelectorAll('.webvol-slider').forEach((el) => {
+      el.addEventListener('input', () => setWebVolume(parseFloat(el.value)));
+    });
+    document.querySelectorAll('.webvol-btn').forEach((btn) => {
+      btn.addEventListener('click', toggleWebVolumeMute);
+    });
+    applyWebVolume();
 
     let currentSongId = null;
     let currentStreamingSongId = null;

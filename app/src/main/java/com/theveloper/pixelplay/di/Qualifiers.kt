@@ -17,6 +17,14 @@ annotation class DeezerRetrofit
 annotation class FastOkHttpClient
 
 /**
+ * Qualifier for the OkHttpClient used by the Listening Data Research Program API
+ * (certificate pinning + request signing).
+ */
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class ResearchOkHttpClient
+
+/**
  * Qualifier for Gson instance configured for backup serialization.
  */
 @Qualifier

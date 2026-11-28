@@ -6,6 +6,8 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.IOException
+import java.net.SocketTimeoutException
 import java.util.concurrent.TimeUnit
 
 /** 把组装好的账号凭据一次性 POST 给电视。 */
@@ -14,7 +16,7 @@ class TvAuthClient(
 ) {
 
     suspend fun send(target: TvQrPayload, body: String): Result<Unit> = withContext(Dispatchers.IO) {
-        runCatching {
+        try {
             val request = Request.Builder()
                 .url(target.url)
                 .post(body.toRequestBody(JSON_MEDIA_TYPE))
@@ -23,10 +25,16 @@ class TvAuthClient(
                 .build()
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
-                    error(errorMessage(response.code))
+                    // HTTP 状态错误统一转成 IOException，让下面的分支给出去掉堆栈的友好提示。
+                    throw IOException(errorMessage(response.code))
                 }
             }
-            Unit
+            Result.success(Unit)
+        } catch (timeout: SocketTimeoutException) {
+            // 电视端导入账号需要跑各平台的外网校验，读超时放宽后仍超时多半是网络不通。
+            Result.failure(IOException("连接电视超时，请确认手机与电视连的是同一个 Wi-Fi"))
+        } catch (io: IOException) {
+            Result.failure(IOException(io.message ?: "无法连接电视，请确认手机与电视连的是同一个 Wi-Fi"))
         }
     }
 
@@ -43,10 +51,11 @@ class TvAuthClient(
     companion object {
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
 
+        // 电视端导入账号要并行校验各平台 Cookie（单平台最长 12 秒），读超时需覆盖整个导入过程。
         fun defaultClient(): OkHttpClient = OkHttpClient.Builder()
-            .connectTimeout(10, TimeUnit.SECONDS)
-            .readTimeout(10, TimeUnit.SECONDS)
-            .writeTimeout(10, TimeUnit.SECONDS)
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
             .build()
     }
 }

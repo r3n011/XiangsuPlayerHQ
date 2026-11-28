@@ -301,7 +301,10 @@ fun SettingsCategoryScreen(
     onBackClick: () -> Unit,
     showBackButton: Boolean = true,
     /** 平板双栏模式下，插件中心需要交给外层 NavHost 全屏打开 */
-    onOpenPluginCenter: (() -> Unit)? = null
+    onOpenPluginCenter: (() -> Unit)? = null,
+    /** 听歌数据研究计划：协议页 / 公告页路由只在外层 NavHost，平板双栏需由外层打开 */
+    onOpenResearchLegal: ((Boolean) -> Unit)? = null,
+    onOpenResearchNotices: (() -> Unit)? = null
 ) {
     val category = SettingsCategory.fromId(categoryId) ?: return
     val context = LocalContext.current
@@ -572,6 +575,28 @@ fun SettingsCategoryScreen(
                     when (category) {
                         SettingsCategory.AI_INTEGRATION -> {
                             AiIntegrationSettingsContent(settingsViewModel = settingsViewModel)
+                        }
+                        SettingsCategory.RESEARCH -> {
+                            ResearchSettingsContent(
+                                onOpenLegal = { consentMode ->
+                                    val openLegal = onOpenResearchLegal
+                                    if (openLegal != null) {
+                                        openLegal(consentMode)
+                                    } else {
+                                        navController.navigateSafely(
+                                            Screen.ResearchLegal.createRoute(consentMode)
+                                        )
+                                    }
+                                },
+                                onOpenNotices = {
+                                    val openNotices = onOpenResearchNotices
+                                    if (openNotices != null) {
+                                        openNotices()
+                                    } else {
+                                        navController.navigateSafely(Screen.ResearchNotices.route)
+                                    }
+                                },
+                            )
                         }
                         SettingsCategory.USB_EXCLUSIVE -> {
                             // ⚡ 设备状态卡：当前设备 / 独占是否真的激活 / 支持采样率，

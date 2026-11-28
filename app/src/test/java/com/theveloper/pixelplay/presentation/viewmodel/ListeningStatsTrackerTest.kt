@@ -19,6 +19,8 @@ class ListeningStatsTrackerTest {
 
     private val dailyMixManager: DailyMixManager = mockk(relaxed = true)
     private val playbackStatsRepository: PlaybackStatsRepository = mockk(relaxed = true)
+    private val researchEventRecorder: com.theveloper.pixelplay.data.research.ResearchEventRecorder =
+        mockk(relaxed = true)
 
     @BeforeEach
     fun setUp() {
@@ -34,7 +36,8 @@ class ListeningStatsTrackerTest {
     fun `finalizeCurrentSession preserves listening longer than track duration`() {
         val tracker = ListeningStatsTracker(
             dailyMixManager = dailyMixManager,
-            playbackStatsRepository = playbackStatsRepository
+            playbackStatsRepository = playbackStatsRepository,
+            researchEventRecorder = researchEventRecorder
         )
         val song = song(
             songId = "looped-song",
@@ -67,7 +70,8 @@ class ListeningStatsTrackerTest {
     fun `onProgress accumulates incremental listening time`() {
         val tracker = ListeningStatsTracker(
             dailyMixManager = dailyMixManager,
-            playbackStatsRepository = playbackStatsRepository
+            playbackStatsRepository = playbackStatsRepository,
+            researchEventRecorder = researchEventRecorder
         )
         val song = song(songId = "song-1")
         val firstChunkMs = 7_000L
